@@ -1,7 +1,35 @@
 :root {
-  --font-family: system-ui, Helvetica
+  --font-family: system-ui, Helvetica --width-container
 }
 
 body {
+  box-sizing: border-box;
   font-family: var(--font-family);
+  margin: 0;
+}
+
+#container {
+  margin: 0 auto;
+  padding: 50px;
+  background-color: #141627;
+}
+
+#container #header {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+#container #header #shortcutList {
+  display: flex;
+  flex-direction: row;
+  gap: 90px;
+  margin: 0;
+  list-style: none;
+}
+
+#container #header .anchorDecor {
+  text-decoration: none;
+  color: #fff;
 }
