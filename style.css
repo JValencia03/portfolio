@@ -8,20 +8,20 @@ body {
   margin: 0;
 }
 
-#container {
-  margin: 0 auto;
-  padding: 50px;
-  background-color: #141627;
-}
-
-#container #header {
-  margin: 0 auto;
+header nav {
   display: flex;
   flex-direction: row;
+  margin: 0 auto;
+  padding: 60px;
+  background-color: #141627;
   justify-content: space-between;
 }
 
-#container #header #shortcutList {
+#svg__home {
+  fill: #f45;
+}
+
+header #shortcutList {
   display: flex;
   flex-direction: row;
   gap: 90px;
@@ -29,7 +29,16 @@ body {
   list-style: none;
 }
 
-#container #header .anchorDecor {
+header .anchor-decor {
   text-decoration: none;
   color: #fff;
+}
+
+header .dark-mode {
+  background: none;
+  border: none
+}
+
+#sun-color {
+  fill: #fff;
 }
