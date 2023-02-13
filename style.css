@@ -1,44 +1,133 @@
 :root {
-  --font-family: system-ui, Helvetica --width-container
+  --contrast-color: #fd4370;
+  --font-color: #fff
 }
 
 body {
   box-sizing: border-box;
-  font-family: var(--font-family);
+  font-family: system-ui, Helvetica, sans-serif;
   margin: 0;
+  font-size: 23px;
 }
+
+/* Header style */
+
+header {
+  display: flex;
+  flex-direction: column;
+  padding: 50px 60px;
+  background-color: #141627;
+  gap: 50px;
+}
+
+/* Header-nav style */
 
 header nav {
   display: flex;
   flex-direction: row;
-  margin: 0 auto;
-  padding: 60px;
-  background-color: #141627;
   justify-content: space-between;
+  align-items: center;
 }
 
-#svg__home {
-  fill: #f45;
+header nav #path__home {
+  fill: var(--contrast-color);
 }
 
-header #shortcutList {
+header #shortcut-list {
   display: flex;
   flex-direction: row;
   gap: 90px;
   margin: 0;
   list-style: none;
+  font-size: .8em;
 }
 
 header .anchor-decor {
   text-decoration: none;
-  color: #fff;
+  color: var(--font-color);
 }
 
-header .dark-mode {
+header nav ul .default-style-button {
   background: none;
   border: none
 }
 
-#sun-color {
+header nav ul #sun-color {
   fill: #fff;
+}
+
+/* Header article style */
+
+header article {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+header article .description__left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-basis: 20rem;
+  flex-grow: 1;
+}
+
+header article .description__left h1 {
+  display: block;
+  margin: 0;
+  text-align: justify;
+  font-size: 2.8em;
+  font-weight: 600;
+  letter-spacing: -2px;
+  line-height: 1.2em;
+  color: var(--font-color);
+}
+
+header article .description__left p {
+  font-size: 1em;
+  text-align: justify;
+  margin: 0;
+  color: var(--font-color);
+}
+
+header article .description__left .remark {
+  color: var(--contrast-color);
+}
+
+header article .description__left p .remark-under-lvl {
+  font-size: 1.4em;
+  letter-spacing: -2px;
+  display: block;
+}
+
+header article .description__right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-basis: 600px;
+}
+
+header article .description__right #perfil__img {
+  width: 300px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  padding: 55px;
+  background-color: #1b1e32;
+  gap: 36px;
+  font-size: 23px;
+}
+
+main h2 {
+  margin: 0;
+  text-align: justify;
+  font-size: 2em;
+  font-weight: 600;
+  letter-spacing: -2px;
+  line-height: 1.2em;
+  color: var(--font-color);
 }
