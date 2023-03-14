@@ -16,8 +16,8 @@
         </svg></a>
       <ul id="shortcut-list">
         <li><a class="anchor-decor" href="#">Introduction</a></li>
-        <li><a class="anchor-decor" href="#">Portfolio</a></li>
-        <li><a class="anchor-decor" href="#">Contact</a></li>
+        <li><a class="anchor-decor" href="#portfolio">Portfolio</a></li>
+        <li><a class="anchor-decor" href="#contactme">Contact</a></li>
         <li>
           <button class="default-style-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
@@ -33,22 +33,59 @@
         <h1>Hey, I'm <span class="remark">Juan Valencia</span></h1>
         <p><span class="remark-under-lvl">a junior
             frontend developer
-            with knowledge in <span class="remark">Javascript.</span></span> Skilled in building dynamic user interfaces
+            with knowledge in technologies like <span class="remark">tailwindcss, javascript and
+              react.</span><br></span> Skilled in building dynamic user interfaces
           and
           efficient web pages. Ready for get over all the challenges coming.
         </p>
       </section>
       <section class="description__right">
-        <img id="perfil__img"
-          src="https://img.freepik.com/foto-gratis/jugador-futbol-americano-accion-sobre-hierba-verde-fondo-gris_155003-16391.jpg?w=740&t=st=1676129330~exp=1676129930~hmac=beae18e8c97039e27684dd49bbe2eb357bde102520c3e836e590ac6f72edbff4"
-          alt="">
+        <img id="perfil__img" src="./MyPicture-min.jpg" alt="My profile picture">
       </section>
     </article>
   </header>
   <main>
-    <h2>Projects</h2>
+    <h2 id="portfolio">Portfolio</h2>
+    <section>
+      <div class="card">
+        <img src="RickAndMortyApi-min.jpg" alt="RickAndMortyApi Project preview">
+        <h3>Omdbapp - Movie search</h3>
+        <p>Fething the omdbapi and making a movie search with useRef and other hooks</p>
+        <div class="links">
+          <a href="https://omdbapp-jf.netlify.app/" target="_blank">WebPage</a>
+          <a href="https://github.com/JValencia03/react-test-02" target="_blank">GitHub</a>
+        </div>
+      </div>
+      <div class="card">
+        <img src="OmdbApi-min.jpg" alt="RickAndMortyApi Project preview">
+        <h3>Rick and Morty Api</h3>
+        <p>Fething the RaM Api and with react-router-dom I create a single page application</p>
+        <div class="links">
+          <a href="https://rickandmortyapi-jf.netlify.app/" target="_blank">WebPage</a>
+          <a href="https://github.com/JValencia03/rick-and-morty-react-api" target="_blank">GitHub</a>
+        </div>
+      </div>
+    </section>
+    <h2 id="contactme"><span>Contact Me</span></h2>
+    <section class="contact">
+      <div class="u-wrapper">
+        <div class="contact-content">
+
+          <form id="form" action="" class="form">
+            <label for="name">Full Name <span>*</span></label>
+            <input name="name" required type="text" id="name" placeholder="Erick Mayorga">
+            <label for="email">Email <span>*</span></label>
+            <input name="email" type="text" id="email" required placeholder="erick@gmail.com">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" id="" cols="30" rows="10"></textarea>
+            <button type="submit" class="btn primary full">Send message</button>
+          </form>
+          <a href="mailto:juanfvasa@gmail.com" id="mailtome"></a>
+        </div>
+      </div>
+    </section>
   </main>
-  <script src="/main.js"></script>
 </body>
+<script src="form.js"></script>
 
 </html>
