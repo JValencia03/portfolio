@@ -151,7 +151,7 @@ main section {
   border-radius: 3px;
 }
 
-.card img {
+.card>img {
   margin-top: 10px;
   width: 95%;
   height: 60%;
@@ -173,79 +173,14 @@ main section {
 
 .links {
   display: flex;
+  flex-direction: row;
   gap: 120px;
+  padding-bottom: 20px;
 }
 
-.links a {
-  padding-bottom: 10px;
-  font-weight: bold;
-  text-decoration: none;
-  color: var(--font-color);
-}
-
-.links a:hover {
-  text-decoration: underline;
-}
-
-/* Contact me (form) */
-
-.form {
-  max-inline-size: 550px;
+.contact-links {
   margin: auto;
-}
-
-.form label {
-  display: block;
-  margin-block-start: 1em;
-  margin-block-end: .5em;
-  color: var(--font-color);
-}
-
-.form label span {
-  color: var(--contrast-color);
-}
-
-.form input,
-.form textarea {
-  box-sizing: border-box;
-  width: 100%;
-  font-size: 1rem;
-  padding: .8em;
-  border-radius: .5em;
-  border: 1px solid #858C94;
-}
-
-.form textarea {
-  margin-block-end: 2em;
-  font-family: inherit;
-}
-
-input::-webkit-input-placeholder {
-  color: #0F0A0A88;
-}
-
-.contact {
-  margin-block-end: 5em;
-}
-
-#mailtome {
-  opacity: 0;
-}
-
-.btn {
-  border-radius: 90px;
-  letter-spacing: 1.25px;
-  background: initial;
-  block-size: 50px;
-  display: block;
-  cursor: pointer;
-  user-select: none;
-  box-sizing: border-box;
-  font-size: 14px;
-  text-transform: uppercase;
-  text-align: center;
-  line-height: 50px;
-  font-weight: bold;
-  padding: 0 1.5em;
-  color: var(--contrast-color);
+  display: flex;
+  flex-direction: row;
+  gap: 80px;
 }
