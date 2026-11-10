@@ -1,11 +1,15 @@
 "use client";
 
 import { ArrowDown, ArrowRight } from "lucide-react";
+import type { CSSProperties } from "react";
 import { HeroName } from "@/components/ui/HeroName";
 import { Placeholder } from "@/components/ui/Placeholder";
 import { SectionLink } from "@/components/ui/SectionLink";
 import { profile } from "@/data/profile";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+
+/** When an element joins the entrance, after the name has started to rise. */
+const delay = (ms: number) => ({ "--enter-delay": `${ms}ms` }) as CSSProperties;
 
 /**
  * Hero. Desktop: identity | cube | stack. Mobile: identity, cube, primary
@@ -20,12 +24,12 @@ export function Hero() {
     <section id="hero" aria-labelledby="hero-title" tabIndex={-1} className="section">
       <div className="section-inner hero-grid">
         <div className="hero-identity">
-          <p className="eyebrow">
+          <p className="eyebrow enter">
             <span className="eyebrow-dot" aria-hidden="true" />
             {copy.role}
           </p>
           <HeroName id="hero-title" name={profile.name} />
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-fog-300">
+          <p className="enter mt-6 max-w-md text-lg leading-relaxed text-fog-300" style={delay(700)}>
             {intro ?? <Placeholder label={copy.placeholders.intro} />}
           </p>
         </div>
@@ -48,13 +52,14 @@ export function Hero() {
         </div>
 
         <div className="hero-cta">
-          <SectionLink to="projects" className="btn btn-primary">
+          <SectionLink to="projects" className="btn btn-primary enter" style={delay(850)}>
             {copy.primaryCta}
             <ArrowRight aria-hidden="true" className="size-4" />
           </SectionLink>
         </div>
 
         <aside className="hero-stack" aria-labelledby="hero-stack-title">
+          <div className="enter" style={delay(950)}>
           <h2 id="hero-stack-title" className="block-label">
             {copy.stackTitle}
           </h2>
@@ -90,6 +95,7 @@ export function Hero() {
           <SectionLink to="contact" className="btn btn-ghost mt-8">
             {copy.secondaryCta}
           </SectionLink>
+          </div>
         </aside>
       </div>
     </section>

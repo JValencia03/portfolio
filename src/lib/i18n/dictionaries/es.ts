@@ -30,6 +30,20 @@ const es: Dictionary = {
     placeholder: "Pendiente",
     opensInNewTab: "se abre en una pestaña nueva",
   },
+  faces: {
+    label: "Cara",
+    white: "Blanca",
+    yellow: "Amarilla",
+    blue: "Azul",
+    green: "Verde",
+    red: "Roja",
+    orange: "Naranja",
+  },
+  frame: {
+    progress: "Progreso",
+    backToTop: "Volver arriba",
+    builtWith: "Hecho con",
+  },
   nav: {
     label: "Navegación principal",
     home: "Inicio",

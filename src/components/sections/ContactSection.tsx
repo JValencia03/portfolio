@@ -8,34 +8,43 @@ import { SectionShell } from "./SectionShell";
 
 const CHANNELS = ["email", "github", "linkedin"] as const;
 
+/** Contact as an editorial index: one large row per channel. */
 export function ContactSection() {
   const { dictionary } = useI18n();
   const copy = dictionary.contact;
 
   return (
     <SectionShell id="contact" eyebrow={copy.eyebrow} title={copy.title}>
-      <ul className="reveal max-w-3xl border-t border-white/10">
-        {CHANNELS.map((channel) => {
+      <ul className="reveal max-w-4xl border-t border-white/10">
+        {CHANNELS.map((channel, index) => {
           const value = profile.contact[channel];
           const isEmail = channel === "email";
+          const name = (
+            <span className="flex items-baseline gap-4 md:gap-6">
+              <span aria-hidden="true" className="font-mono text-xs text-fog-400">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="contact-name">{copy[channel]}</span>
+            </span>
+          );
           return (
             <li key={channel} className="border-b border-white/10">
               {value ? (
                 <a
                   href={isEmail ? `mailto:${value}` : value}
                   {...(isEmail ? {} : { target: "_blank", rel: "noopener noreferrer" })}
-                  className="group flex min-h-16 items-center justify-between gap-6 py-4 text-xl transition-colors hover:text-accent md:text-2xl"
+                  className="contact-row group"
                 >
-                  <span>{copy[channel]}</span>
-                  <span className="flex items-center gap-2 text-base text-fog-400 group-hover:text-accent">
+                  {name}
+                  <span className="flex items-center gap-2 text-base text-fog-400 transition-colors group-hover:text-accent">
                     {isEmail && value}
-                    <ArrowUpRight aria-hidden="true" className="size-5" />
+                    <ArrowUpRight aria-hidden="true" className="contact-arrow size-6" />
                     {!isEmail && <span className="sr-only">({dictionary.common.opensInNewTab})</span>}
                   </span>
                 </a>
               ) : (
-                <div className="flex min-h-16 flex-wrap items-center justify-between gap-x-6 gap-y-2 py-4 text-xl md:text-2xl">
-                  <span>{copy[channel]}</span>
+                <div className="contact-row flex-wrap gap-y-2">
+                  {name}
                   <Placeholder label={copy.placeholders[channel]} />
                 </div>
               )}

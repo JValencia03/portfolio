@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { locale as rootLocale } from "next/root-params";
+import { Frame } from "@/components/layout/Frame";
 import { InitialScrollScript } from "@/components/layout/InitialScrollScript";
 import { Navbar } from "@/components/layout/Navbar";
 import { PortfolioExperience } from "@/components/layout/PortfolioExperience";
@@ -63,6 +64,8 @@ export default async function RootLayout({ children }: LayoutProps<"/[locale]">)
             <ExperienceCanvasLoader />
             <div aria-hidden="true" className="scroll-progress" />
             <Navbar />
+            <Frame />
+            <div aria-hidden="true" className="grain" />
             <main id="content">
               <PortfolioExperience />
             </main>

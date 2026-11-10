@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 /** Reach of the pointer around each letter, in multiples of the font size. */
@@ -183,6 +183,8 @@ export function HeroName({ id, name }: { id: string; name: string }) {
   }, [reducedMotion, name]);
 
   const words = name.split(" ");
+  // Position of each letter in the whole name: the order of the entrance (--i).
+  let order = 0;
 
   return (
     <h1 ref={heading} id={id} aria-label={name} className="display-title hero-name">
@@ -191,7 +193,12 @@ export function HeroName({ id, name }: { id: string; name: string }) {
           {/* A word never breaks between its letters. */}
           <span className="hero-word">
             {Array.from(word, (character, position) => (
-              <span key={position} data-letter className="hero-letter">
+              <span
+                key={position}
+                data-letter
+                className="hero-letter"
+                style={{ "--i": order++ } as CSSProperties}
+              >
                 {character}
               </span>
             ))}

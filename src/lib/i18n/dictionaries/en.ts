@@ -39,6 +39,22 @@ const en = {
     placeholder: "Placeholder",
     opensInNewTab: "opens in a new tab",
   },
+  /** The cube face a section lives on, shown as a small tag in its header. */
+  faces: {
+    label: "Face",
+    white: "White",
+    yellow: "Yellow",
+    blue: "Blue",
+    green: "Green",
+    red: "Red",
+    orange: "Orange",
+  },
+  /** Fixed marginalia and the closing colophon. */
+  frame: {
+    progress: "Progress",
+    backToTop: "Back to top",
+    builtWith: "Built with",
+  },
   nav: {
     label: "Main navigation",
     home: "Home",

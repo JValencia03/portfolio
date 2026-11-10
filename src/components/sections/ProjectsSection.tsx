@@ -8,7 +8,7 @@ import { projects, type Project } from "@/data/projects";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { SectionShell } from "./SectionShell";
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, index }: { project: Project; index: number }) {
   const { locale, dictionary } = useI18n();
   const copy = dictionary.projects;
   const titleId = `project-${project.id}-title`;
@@ -18,6 +18,9 @@ function ProjectCard({ project }: { project: Project }) {
       <TiltCard className="h-full">
         <article aria-labelledby={titleId} className="card flex h-full flex-col">
           <div className="media-slot">
+            <span aria-hidden="true" className="media-index">
+              P/{String(index + 1).padStart(2, "0")}
+            </span>
             {project.image ? (
               // eslint-disable-next-line @next/next/no-img-element -- dimensions are unknown until real assets exist
               <img src={project.image} alt="" className="size-full object-cover" />
@@ -82,8 +85,8 @@ export function ProjectsSection() {
   return (
     <SectionShell id="projects" eyebrow={copy.eyebrow} title={copy.title}>
       <ul className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
+        {projects.map((project, index) => (
+          <ProjectCard key={project.id} project={project} index={index} />
         ))}
       </ul>
     </SectionShell>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUp, ArrowUpRight } from "lucide-react";
 import { DepthTitle } from "@/components/ui/DepthTitle";
 import { Placeholder } from "@/components/ui/Placeholder";
 import { SectionLink } from "@/components/ui/SectionLink";
@@ -49,6 +49,16 @@ export function ResumeFinale() {
               {copy.contactLink}
             </SectionLink>
           </div>
+
+          {/* Colophon: who, what it is made of, and the way back up. */}
+          <footer className="colophon">
+            <p>© {profile.name}</p>
+            <p className="max-sm:hidden">{dictionary.frame.builtWith} Next.js · Three.js · CSS Scroll-driven Animations</p>
+            <SectionLink to="hero" className="colophon-link">
+              {dictionary.frame.backToTop}
+              <ArrowUp aria-hidden="true" className="size-3.5" />
+            </SectionLink>
+          </footer>
         </div>
       </div>
     </section>

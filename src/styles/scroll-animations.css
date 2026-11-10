@@ -32,6 +32,24 @@
       animation-timeline: scroll(root block);
     }
 
+    /*
+     * Reading progress as a number (Frame). --scroll-percent is a registered
+     * integer animated from 0 to 100 by the document's scroll timeline, and a
+     * CSS counter prints it: a live readout with no JavaScript.
+     */
+    @media (width >= 64rem) {
+      /* Two classes: this file loads before the rule that hides it by default. */
+      .frame .frame-right {
+        display: flex;
+      }
+    }
+    .frame-progress::after {
+      counter-reset: percent var(--scroll-percent);
+      content: counter(percent, decimal-leading-zero) "%";
+      animation: scroll-percent linear both;
+      animation-timeline: scroll(root block);
+    }
+
     /* Content reveal: driven by each element's own passage through the viewport. */
     .reveal {
       animation: reveal linear both;
@@ -127,6 +145,18 @@
         contain 25svh contain 85svh,
         exit 0% exit 45%;
     }
+  }
+}
+
+@property --scroll-percent {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes scroll-percent {
+  to {
+    --scroll-percent: 100;
   }
 }
 

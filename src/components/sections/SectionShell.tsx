@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 import { DepthTitle } from "@/components/ui/DepthTitle";
 import { getFaceIndex, getSectionFace, type SectionId } from "@/data/navigation";
 
@@ -24,6 +27,7 @@ interface SectionShellProps {
 export function SectionShell({ id, eyebrow, title, subtitle, children }: SectionShellProps) {
   const face = getSectionFace(id);
   const index = getFaceIndex(id);
+  const { faces } = useI18n().dictionary;
 
   return (
     <section
@@ -50,6 +54,15 @@ export function SectionShell({ id, eyebrow, title, subtitle, children }: Section
             </p>
             <DepthTitle id={`${id}-title`}>{title}</DepthTitle>
             {subtitle && <p className="mt-4 font-mono text-sm tracking-wide text-fog-400 md:text-base">{subtitle}</p>}
+            {/* A hairline in the face color, signed with the face the section lives on. */}
+            <div aria-hidden="true" className="section-rule">
+              {face && (
+                <span className="face-tag">
+                  <span className="face-tag-swatch" />
+                  {faces.label} / {faces[face]}
+                </span>
+              )}
+            </div>
           </header>
           {children}
         </div>
