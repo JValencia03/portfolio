@@ -1,0 +1,188 @@
+/*
+ * Native CSS Scroll-driven Animations.
+ *
+ * Everything in this file is progressive enhancement: without support for
+ * `animation-timeline`, or when the visitor prefers reduced motion, the rules
+ * below never apply and the content is simply static and fully visible.
+ *
+ * Each animation is a pure function of the scroll position, so it reverses
+ * exactly when scrolling back and can be paused at any point.
+ *
+ * The 3D scene is driven from the same geometry: the transition tracks that
+ * carry the --track view timeline below are the elements the scroll timeline
+ * in lib/scroll measures. HTML and WebGL therefore move together.
+ */
+
+.scroll-progress {
+  display: none;
+}
+
+@supports (animation-timeline: scroll()) and (animation-range: entry) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* Reading progress: driven by the document's scroll position. */
+    .scroll-progress {
+      display: block;
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 60;
+      height: 2px;
+      background: var(--accent);
+      transform-origin: 0 50%;
+      animation: scroll-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    /* Content reveal: driven by each element's own passage through the viewport. */
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+
+    /*
+     * Finale. --finale is the view timeline of the closing section; its
+     * "contain" range is exactly the screen during which the content is
+     * pinned. The content is revealed across it, as the cubies clear the
+     * middle of the view.
+     */
+    [data-scene="on"] .finale-section {
+      view-timeline: --finale block;
+    }
+    [data-scene="on"] .finale-section .section-inner {
+      animation: emerge linear both;
+      animation-timeline: --finale;
+      animation-range: contain 20svh contain 80svh;
+    }
+
+    /*
+     * Midground numerals: each drifts against the scroll across its own
+     * passage through the viewport, so it moves more slowly than the content
+     * in front of it and faster than the scene behind — parallax from CSS
+     * alone.
+     */
+    .section-numeral {
+      animation: numeral-drift linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /*
+     * Hero: its content recedes as the hero scrolls away, while the cube leaves
+     * its slot for the center of the stage. --hero is a named view timeline on
+     * the section; the children animate against it.
+     */
+    #hero {
+      view-timeline: --hero block;
+    }
+    #hero .hero-identity,
+    #hero .hero-cta,
+    #hero .hero-stack,
+    #hero .hero-cube > p {
+      animation: recede linear both;
+      animation-timeline: --hero;
+      animation-range: exit 0% exit 75%;
+    }
+
+    /*
+     * Transition tracks. Each track names its own view timeline, and the
+     * caption announcing the destination is animated by it alone: it fades in
+     * as the cube finishes turning toward the face and out as the camera
+     * nears the portal. "cover" spans the track's whole passage through the
+     * viewport; the percentages come from the same stage configuration as the
+     * scroll timeline (TransitionTrack). Two nested elements carry the two
+     * fades, so each can have its own range.
+     */
+    [data-scene="on"] .scene-track {
+      view-timeline: --track block;
+    }
+    [data-scene="on"] .track-caption {
+      display: flex;
+      animation: caption-in linear both;
+      animation-timeline: --track;
+      animation-range: cover var(--caption-in-start) cover var(--caption-in-end);
+    }
+    [data-scene="on"] .track-caption-body {
+      animation: caption-out linear both;
+      animation-timeline: --track;
+      animation-range: cover var(--caption-out-start) cover var(--caption-out-end);
+    }
+
+    /*
+     * Sections. --section is the view timeline of the whole <section>.
+     * Its "contain" range starts when the section reaches the top of the
+     * viewport, which is the start of its pin: the content settles into place
+     * across that pinned screen, behind the opening portal window. At the
+     * exit it recedes as the window closes. The fill modes keep the two
+     * animations from overriding each other outside their own ranges.
+     */
+    [data-scene="on"] .scene-section {
+      view-timeline: --section block;
+    }
+    [data-scene="on"] .scene-section .section-inner {
+      animation:
+        emerge linear backwards,
+        recede linear forwards;
+      animation-timeline: --section, --section;
+      animation-range:
+        contain 25svh contain 85svh,
+        exit 0% exit 45%;
+    }
+  }
+}
+
+@keyframes numeral-drift {
+  from {
+    translate: 0 -5rem;
+  }
+  to {
+    translate: 0 5rem;
+  }
+}
+
+@keyframes recede {
+  to {
+    opacity: 0;
+    translate: 0 -2rem;
+  }
+}
+
+@keyframes emerge {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+}
+
+@keyframes caption-in {
+  from {
+    opacity: 0;
+    translate: 0 0.75rem;
+  }
+}
+
+@keyframes caption-out {
+  to {
+    opacity: 0;
+    translate: 0 -0.75rem;
+  }
+}
+
+@keyframes scroll-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    translate: 0 2.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
