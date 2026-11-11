@@ -16,7 +16,7 @@ const ANCHOR_SELECTOR = "[data-cube-anchor]";
  * Side of the anchor element divided by the cube's edge. Above 1 so the
  * turned cube, whose silhouette is wider than its edge, still fits.
  */
-const ANCHOR_FIT = 1.62;
+const ANCHOR_FIT = 1.4;
 
 /** How quickly the pointer's influence follows the pointer; higher is snappier. */
 const POINTER_DAMPING = 4;

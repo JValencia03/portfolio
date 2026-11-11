@@ -4,12 +4,13 @@ export const CUBE = {
   spacing: 1,
   /** Side of a cubie's glass shell. Smaller than the spacing, which leaves a visible gap. */
   cubieSize: 0.95,
-  cubieRadius: 0.11,
+  /** Generous rounding: each cubie reads as a pebble of glass rather than a block. */
+  cubieRadius: 0.16,
   /** Side of the opaque core inside each glass shell. */
   coreSize: 0.8,
   /** Side of a colored panel. */
   panelSize: 0.74,
-  panelRadius: 0.13,
+  panelRadius: 0.2,
   panelDepth: 0.022,
   panelBevel: 0.016,
 } as const;

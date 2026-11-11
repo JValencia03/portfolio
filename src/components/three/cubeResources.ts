@@ -55,39 +55,50 @@ export interface CubeResources {
  * shared by instanced meshes.
  */
 export function createCubeResources(colors: Record<FaceColor, string>, quality: Quality): CubeResources {
-  const bodyGeometry = new RoundedBoxGeometry(CUBE.cubieSize, CUBE.cubieSize, CUBE.cubieSize, 3, CUBE.cubieRadius);
+  const bodyGeometry = new RoundedBoxGeometry(CUBE.cubieSize, CUBE.cubieSize, CUBE.cubieSize, 6, CUBE.cubieRadius);
   // The core is almost entirely hidden behind the panels: a plain box is enough.
   const coreGeometry = new BoxGeometry(CUBE.coreSize, CUBE.coreSize, CUBE.coreSize);
   const panelGeometry = createPanelGeometry();
 
-  // Clear glass shell. Core and panels are encased in it, so the colors are
-  // seen through a refracting surface and the bevels pick up the studio lights
-  // as bright edges. The tint stays near neutral: a colored one would shift
-  // the face colors seen through it.
+  // Liquid glass shell: perfectly clear and thick, so it bends what is behind
+  // it like a lens, with bright wet highlights on its rounded edges and a
+  // faint spectral fringe where the light splits. Core and panels are encased
+  // in it. The tint stays neutral: a colored one would shift the face colors.
   const bodyMaterial = quality.transmission
     ? new MeshPhysicalMaterial({
-        color: "#e4e9f5",
-        roughness: 0.03,
+        color: "#ffffff",
+        roughness: 0,
         metalness: 0,
         transmission: 1,
-        thickness: 0.25,
-        ior: 1.4,
-        attenuationColor: "#dfe4f2",
-        attenuationDistance: 1.2,
+        thickness: 0.18,
+        ior: 1.45,
+        dispersion: 0.25,
+        attenuationColor: "#eef2fb",
+        attenuationDistance: 2.5,
         clearcoat: 1,
-        clearcoatRoughness: 0.05,
-        // Reflections are what draw the glass: let the light panels read clearly on the bevels.
-        envMapIntensity: 1.7,
+        clearcoatRoughness: 0,
+        specularIntensity: 1,
+        // A thin film on the surface: the soft rainbow sheen at grazing angles.
+        iridescence: 0.35,
+        iridescenceIOR: 1.3,
+        iridescenceThicknessMinimum: 120,
+        iridescenceThicknessMaximum: 380,
+        // Reflections are what draw the glass: let the light panels read clearly on the edges.
+        envMapIntensity: 2.3,
       })
     : // Lighter devices: the shell contributes only its reflections, added on top
       // of what is behind it. Same highlights on the bevels, no second render pass.
       new MeshPhysicalMaterial({
         color: "#000000",
-        roughness: 0.03,
+        roughness: 0,
         metalness: 0,
         clearcoat: 1,
-        clearcoatRoughness: 0.05,
-        envMapIntensity: 1.7,
+        clearcoatRoughness: 0,
+        iridescence: 0.35,
+        iridescenceIOR: 1.3,
+        iridescenceThicknessMinimum: 120,
+        iridescenceThicknessMaximum: 380,
+        envMapIntensity: 2.3,
         transparent: true,
         blending: AdditiveBlending,
         depthWrite: false,
@@ -109,10 +120,10 @@ export function createCubeResources(colors: Record<FaceColor, string>, quality: 
           color,
           emissive: color,
           emissiveIntensity: 0.6,
-          roughness: 0.18,
+          roughness: 0.1,
           metalness: 0,
           clearcoat: 1,
-          clearcoatRoughness: 0.06,
+          clearcoatRoughness: 0.02,
         }),
       ];
     }),
