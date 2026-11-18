@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { INITIAL_SECTION, getSectionFace, type SectionId } from "@/data/navigation";
+import { INITIAL_SECTION, getSectionColor, type SectionId } from "@/data/navigation";
 import type { Locale } from "@/lib/i18n/config";
 import { pageTitle } from "@/lib/i18n/format";
 import { useI18n } from "@/lib/i18n/I18nProvider";
@@ -39,6 +39,10 @@ import { parsePath, pathFor } from "./routes";
  *   through that one portal.
  * - While such a move is in flight, scroll-driven updates are ignored. That
  *   is what prevents feedback loops between the two.
+ * - The document has no end. Its last screen is a copy of its first, and when
+ *   the scroll reaches it the position is moved back to the top: the same
+ *   picture, so the visitor simply keeps scrolling. The seam is marked with a
+ *   brief light along the top edge (`.loop-flash`).
  *
  * Next.js' router is deliberately bypassed for in-experience navigation: the
  * native History API keeps the layout and the WebGL canvas mounted.
@@ -48,6 +52,8 @@ import { parsePath, pathFor } from "./routes";
 const CURTAIN_MS = 170;
 /** How long the travel from an aligned face through its portal takes. */
 const TRAVEL_MS = 1300;
+/** How long the light along the top edge lasts when the scroll goes round. */
+const LAP_FLASH_MS = 1400;
 /** Input that means the visitor is taking over the scroll. */
 const TAKEOVER_EVENTS = ["wheel", "touchstart", "keydown"] as const;
 
@@ -170,10 +176,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const travelTo = useCallback(
     (id: SectionId) => {
       const anchor = scrollStore.anchorOf(id);
+      // Where the short journey starts: the section's face already aligned, or the
+      // cube already turned and about to open.
       const aligned = scrollStore.timeline?.segments.find(
-        (segment) => segment.state === "ALIGNED" && segment.to === id && segment.end > segment.start,
+        (segment) =>
+          (segment.state === "ALIGNED" || segment.state === "OPENING") && segment.to === id && segment.end > segment.start,
       );
-      // No portal to travel through (hero, finale, or no scene): a plain cut.
+      // Nothing to travel through (hero, a project read inside the cube, finale, or no scene): a plain cut.
       if (!aligned || anchor === null || !sceneIsRunning()) {
         jumpTo(id);
         return;
@@ -255,9 +264,30 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       store.set(initial.section);
     }
 
+    /**
+     * The seam of the loop. Past `loopEnd` the viewport shows the copy of the
+     * hero exactly as the real one looks the same distance from the top, so
+     * the position is moved there. It happens inside the scroll event — before
+     * the frame is drawn — and momentum scrolling carries on from the top.
+     */
+    const goRound = () => {
+      const loopEnd = scrollStore.loopEnd;
+      if (loopEnd === null || moving.current || !sceneIsRunning()) return;
+      // A pixel early: the last reachable position can fall a fraction short of the copy's top.
+      if (window.scrollY < loopEnd - 1) return;
+      scrollToPosition(Math.max(0, window.scrollY - loopEnd));
+      // The scene follows the lap count, and carries on from the top without a cut.
+      scrollStore.notifyLap();
+      document.querySelector(".loop-flash")?.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: LAP_FLASH_MS,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      });
+    };
+
     // One timeline lookup per frame at most, however many scroll events fire.
     let frame = 0;
     const onScroll = () => {
+      goRound();
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
@@ -300,9 +330,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       const now = resolveTimeline(snapshot.current, timeline, window.scrollY);
       const readable =
         (now.state === "INSIDE_SECTION" && now.to === id) ||
-        (now.state === "EXITING" && now.from === id && now.progress < 0.2) ||
-        // The finale's content is only fully revealed near the very end.
-        (now.state === "FINALE" && now.to === id && now.progress > 0.9);
+        ((now.state === "EXITING" || now.state === "CLOSING") && now.from === id && now.progress < 0.2) ||
+        // The finale's content is only fully revealed near the very end, and then rests.
+        (now.state === "FINALE" && now.to === id && now.progress > 0.9) ||
+        (now.state === "FINALE_HOLD" && now.to === id);
       if (readable) return;
 
       land(id);
@@ -349,13 +380,13 @@ export function useActiveSection(): SectionId {
   return useSyncExternalStore(store.subscribe, store.get, getServerSection);
 }
 
-/** Mirrors navigation state onto the document: title and active face color. */
+/** Mirrors navigation state onto the document: title and the active section's color. */
 function DocumentSync() {
   const { dictionary } = useI18n();
   const active = useActiveSection();
 
   useEffect(() => {
-    document.documentElement.dataset.face = getSectionFace(active) ?? "none";
+    document.documentElement.dataset.face = getSectionColor(active) ?? "none";
     // The title follows the URL, so sections without one keep the last title.
     const routed = parsePath(window.location.pathname)?.section ?? active;
     document.title = pageTitle(dictionary, routed);

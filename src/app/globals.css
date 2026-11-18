@@ -48,12 +48,13 @@
 /* ---------------------------------------------------------------------------
  * Face colors
  *
- * `--accent` is the color of the cube face in charge. It is set in two scopes
- * through the same `data-face` attribute:
+ * `--accent` is the cube color of whatever is in charge. Three faces are
+ * portals to a section; the other three are worn by the three projects found
+ * inside the cube. It is set through the same `data-face` attribute:
  *   - on <html>, by the navigation coordinator, for the active section. It
  *     tints the global chrome (navbar, atmosphere, progress bar).
  *   - on each <section>, statically, so a section's own accents always use
- *     its face color.
+ *     its color — and on each project's card, for the same reason.
  * Registering the property lets the browser interpolate it, so the
  * environment shifts gradually instead of snapping between colors.
  * ------------------------------------------------------------------------- */
@@ -203,6 +204,33 @@
     display: none;
   }
 
+  /*
+   * The seam of the loop (LoopSeam): a copy of the hero closes the document.
+   * Like the tracks it exists only while the scene runs; otherwise the page
+   * simply ends with the finale.
+   */
+  .loop-replica {
+    display: none;
+  }
+
+  /*
+   * A line of light along the top edge, lit for a moment when the scroll goes
+   * round (NavigationProvider). It covers the reading progress bar returning
+   * to zero, so the seam reads as a spark, not as a reset.
+   */
+  .loop-flash {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 61;
+    height: 2px;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(90deg, transparent, #fff 18%, #fff 82%, transparent);
+    box-shadow:
+      0 0 14px 1px rgb(255 255 255 / 0.6),
+      0 10px 70px 8px rgb(255 236 208 / 0.3);
+  }
+
   /* Announces the destination of a track. Animated purely by scroll (scroll-animations.css). */
   .track-caption {
     display: none;
@@ -233,14 +261,18 @@
       display: block;
       height: calc(var(--track-screens) * 100svh);
     }
+    [data-scene="on"] .loop-replica {
+      display: block;
+    }
 
     /*
      * Sections in the scene.
      *
      * The <section> gains one extra screen of height and its content layer is
      * sticky inside it, so the content stays pinned in place for that screen
-     * before it starts to scroll. The portal plays during the pin: the content
-     * is revealed where it stands instead of sliding in.
+     * before it starts to scroll. The reveal plays during the pin — the portal
+     * of a face, or the cube coming apart — so the content appears where it
+     * stands instead of sliding in.
      */
     [data-scene="on"] .scene-section::after {
       content: "";
@@ -256,16 +288,28 @@
       /* Room below the last line, so it can rise to mid-screen before the exit starts. */
       padding-bottom: 32svh;
     }
+    /*
+     * A section read inside the open cube follows the previous one directly:
+     * nothing reveals it, so it is not pinned and takes only its own height.
+     */
+    [data-scene="on"] .scene-section[data-entry="inside"]::after {
+      content: none;
+    }
+    [data-scene="on"] .scene-section[data-entry="inside"] > .section {
+      position: relative;
+      min-height: 100svh;
+    }
 
     /*
      * The finale. Its content is pinned for one screen, centered in the view,
      * while the cube comes apart around it; the reveal itself is a scroll
-     * animation (scroll-animations.css).
+     * animation (scroll-animations.css). It then rests in place for --hold
+     * more screens before the loop carries it away.
      */
     [data-scene="on"] .finale-section::after {
       content: "";
       display: block;
-      height: 100svh;
+      height: calc((1 + var(--hold, 0)) * 100svh);
     }
     [data-scene="on"] .finale-section > .section {
       position: sticky;
@@ -607,6 +651,14 @@
     background: color-mix(in oklab, var(--color-ink-800) 70%, transparent);
     transition: border-color 250ms ease;
   }
+  /*
+   * The three projects are what the cube holds, each in the color of one of
+   * its faces: the edge takes a trace of it and its light pools under the card.
+   */
+  .project-card .card {
+    border-color: color-mix(in oklab, var(--accent) 26%, rgb(255 255 255 / 0.1));
+    box-shadow: 0 2.25rem 4.5rem -2.75rem color-mix(in oklab, var(--accent) 75%, transparent);
+  }
 
   /*
    * Tilt: a surface that leans toward the pointer (see TiltCard). The angles
@@ -643,7 +695,7 @@
     opacity: 1;
   }
   .tilt[data-tilting] .card {
-    border-color: color-mix(in oklab, var(--accent) 45%, rgb(255 255 255 / 0.1));
+    border-color: color-mix(in oklab, var(--accent) 55%, rgb(255 255 255 / 0.1));
   }
   /* Keyboard: the card that holds focus is outlined instead of tilted. */
   .tilt:has(:focus-visible) .card {

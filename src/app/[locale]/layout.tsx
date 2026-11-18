@@ -63,6 +63,7 @@ export default async function RootLayout({ children }: LayoutProps<"/[locale]">)
             <div aria-hidden="true" className="atmosphere" />
             <ExperienceCanvasLoader />
             <div aria-hidden="true" className="scroll-progress" />
+            <div aria-hidden="true" className="loop-flash" />
             <Navbar />
             <Frame />
             <div aria-hidden="true" className="grain" />

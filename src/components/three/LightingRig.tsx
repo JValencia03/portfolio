@@ -2,13 +2,18 @@ import { Environment, Lightformer } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import { Color, type AmbientLight, type DirectionalLight, type Fog } from "three";
-import { getSectionFace, type FaceColor } from "@/data/navigation";
+import { getSectionColor, type FaceColor } from "@/data/navigation";
 import { FACE_COLORS } from "@/lib/rubik/model";
 import { readFaceColors } from "./cubeResources";
 import { sceneFrame } from "./sceneFrame";
+import { sceneLight } from "./sceneLight";
 
 const NEUTRAL = new Color("#ffffff");
 const AMBIENT_INTENSITY = 0.35;
+/** How much the fill light rises at the height of a flare. */
+const FLARE_FILL = 0.9;
+/** How quickly the colored light shifts from one section's color to the next; higher is quicker. */
+const COLOR_DAMPING = 5;
 /** Color the far end of the scene fades into: the page's own darkest tone. */
 export const FOG_COLOR = "#050506";
 const FOG_BASE = new Color(FOG_COLOR);
@@ -21,11 +26,14 @@ const FOG_BASE = new Color(FOG_COLOR);
  * placement is deliberately restrained: bright enough to trace the bevels,
  * never strong enough to wash out the face colors.
  *
- * On top of that, accent lights take the color of the face in charge, and
+ * On top of that, accent lights take the color of the section in charge, and
  * the fog that swallows the far background leans toward it. Their strength
  * comes from the scroll pose: it rises as the camera approaches a face and
- * falls away as the cube turns to the next one. With no face in charge the
- * environment is neutral: black and graphite.
+ * falls away as the cube turns to the next one. With no colored section in
+ * charge the environment is neutral: black and graphite.
+ *
+ * When the cube opens or comes back together the pose also carries a flare:
+ * for that moment the whole scene is lit a little brighter.
  */
 export function LightingRig() {
   const ambient = useRef<AmbientLight>(null);
@@ -36,30 +44,36 @@ export function LightingRig() {
     return Object.fromEntries(FACE_COLORS.map((face) => [face, new Color(tokens[face])])) as Record<FaceColor, Color>;
   });
 
-  useFrame((state) => {
+  useFrame((state, rawDelta) => {
     const { pose, choreographed } = sceneFrame;
-    const face = choreographed ? getSectionFace(pose.tintSection) : null;
-    const strength = face ? pose.tint : 0;
+    const target = choreographed ? getSectionColor(pose.tintSection) : null;
+    const strength = target ? pose.tint : 0;
+    const flare = choreographed ? pose.flare : 0;
+
+    // The color eases toward the section's; out of the dark it simply is that color.
+    const light = sceneLight.color;
+    if (target) {
+      if (sceneLight.strength < 0.01) light.copy(colors[target]);
+      else light.lerp(colors[target], 1 - Math.exp(-COLOR_DAMPING * Math.min(rawDelta, 0.1)));
+    }
+    sceneLight.strength = strength;
 
     if (accent.current) {
       accent.current.intensity = strength * 2.2;
-      if (face) accent.current.color.copy(colors[face]);
+      accent.current.color.copy(light);
     }
     if (frontAccent.current) {
       frontAccent.current.intensity = strength * 0.45;
-      if (face) frontAccent.current.color.copy(colors[face]);
+      frontAccent.current.color.copy(light);
     }
     if (ambient.current) {
-      // The fill light leans toward the face color without losing its brightness.
-      ambient.current.color.copy(NEUTRAL);
-      if (face) ambient.current.color.lerp(colors[face], strength * 0.45);
+      // The fill light leans toward the section's color without losing its brightness.
+      ambient.current.color.copy(NEUTRAL).lerp(light, strength * 0.45);
+      ambient.current.intensity = AMBIENT_INTENSITY + FLARE_FILL * flare;
     }
-    // Atmospheric tint: distant cubes fade into darkness with a trace of the face color.
+    // Atmospheric tint: distant cubes fade into darkness with a trace of the section's color.
     const fog = state.scene.fog as Fog | null;
-    if (fog) {
-      fog.color.copy(FOG_BASE);
-      if (face) fog.color.lerp(colors[face], strength * 0.035);
-    }
+    if (fog) fog.color.copy(FOG_BASE).lerp(light, strength * 0.035);
   });
 
   return (

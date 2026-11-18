@@ -1,16 +1,19 @@
 "use client";
 
 import { ArrowUp, ArrowUpRight } from "lucide-react";
+import type { CSSProperties } from "react";
 import { DepthTitle } from "@/components/ui/DepthTitle";
 import { Placeholder } from "@/components/ui/Placeholder";
 import { SectionLink } from "@/components/ui/SectionLink";
 import { profile } from "@/data/profile";
+import { STAGE_SCREENS } from "@/lib/scroll/phases";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 /**
  * Closing section. With the scene running its content is pinned in the
- * middle of the view and revealed while the cube comes apart around it
- * (`.finale-section` in globals.css); without it, it is a plain section.
+ * middle of the view and revealed while the cube comes apart around it, then
+ * rests there for `data-hold` screens before the document loops back to its
+ * start (`.finale-section` in globals.css); without it, it is a plain section.
  */
 export function ResumeFinale() {
   const { locale, dictionary } = useI18n();
@@ -18,7 +21,15 @@ export function ResumeFinale() {
   const { resume } = profile;
 
   return (
-    <section id="resume" data-pin aria-labelledby="resume-title" tabIndex={-1} className="finale-section">
+    <section
+      id="resume"
+      data-pin
+      data-hold={STAGE_SCREENS.finaleHold}
+      style={{ "--hold": STAGE_SCREENS.finaleHold } as CSSProperties}
+      aria-labelledby="resume-title"
+      tabIndex={-1}
+      className="finale-section"
+    >
       <div className="section">
         <div className="section-inner flex flex-col items-center justify-center text-center">
           <p className="eyebrow reveal">

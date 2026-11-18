@@ -24,10 +24,16 @@ type Listener = () => void;
  */
 export const LAYOUT_RESHAPED_EVENT = "portfolio:layout-reshaped";
 
+/** Marks the copy of the hero that closes the document: where it starts, the document has come round. */
+const LOOP_END_SELECTOR = "[data-loop-end]";
+
 let timeline: Timeline | null = null;
 let anchors: Partial<Record<SectionId, number>> = {};
+let loopEnd: number | null = null;
 let jumps = 0;
+let laps = 0;
 const listeners = new Set<Listener>();
+const lapListeners = new Set<Listener>();
 
 /**
  * How long a section's content layer stays pinned at its start: the height
@@ -39,19 +45,34 @@ function pinLength(section: HTMLElement): number {
   return Math.max(0, section.offsetHeight - content.offsetHeight);
 }
 
+/**
+ * How long a section's content rests in place after it has been revealed,
+ * still pinned: the `data-hold` attribute, in screens. Never more than the pin.
+ */
+function holdLength(section: HTMLElement, pin: number): number {
+  const screens = Number(section.dataset.hold);
+  return Number.isFinite(screens) ? Math.min(pin, screens * window.innerHeight) : 0;
+}
+
 function measure() {
   const scrollY = window.scrollY;
-  const sections = SECTIONS.flatMap(({ id }) => {
+  const sections = SECTIONS.flatMap(({ id, entry }) => {
     const element = document.getElementById(id);
     if (!element) return [];
     const rect = element.getBoundingClientRect();
-    // Reading begins where the pin ends (see SectionBounds.top).
-    return [{ id, top: rect.top + scrollY + pinLength(element), bottom: rect.bottom + scrollY }];
+    const pin = pinLength(element);
+    const hold = holdLength(element, pin);
+    // Reading begins where the reveal ends: the end of the pin, less any rest (see SectionBounds.top).
+    return [{ id, entry, top: rect.top + scrollY + pin - hold, bottom: rect.bottom + scrollY, hold }];
   });
   // Every section must be in the document for the model to be meaningful.
   if (sections.length !== SECTIONS.length) return;
 
-  timeline = buildTimeline({ viewport: window.innerHeight, sections });
+  // The document loops only while the copy of the hero that closes it is laid out.
+  const replica = document.querySelector<HTMLElement>(LOOP_END_SELECTOR);
+  loopEnd = replica && replica.getClientRects().length > 0 ? replica.getBoundingClientRect().top + scrollY : null;
+
+  timeline = buildTimeline({ viewport: window.innerHeight, sections, loopEnd: loopEnd ?? undefined });
   // Browsers snap scroll offsets to device pixels, so a landing position is
   // nudged just past the boundary: always inside the section, never a hair
   // short of it and still in the portal.
@@ -74,6 +95,31 @@ export const scrollStore = {
 
   notifyJump() {
     jumps += 1;
+  },
+
+  /**
+   * Scroll position at which the document has come back to its start, or
+   * `null` when it does not loop. Scrolling past it continues from the top.
+   */
+  get loopEnd(): number | null {
+    return loopEnd;
+  },
+
+  /** How many times the scroll has gone round. */
+  get laps(): number {
+    return laps;
+  },
+
+  notifyLap() {
+    laps += 1;
+    lapListeners.forEach((listener) => listener());
+  },
+
+  subscribeLaps(listener: Listener): () => void {
+    lapListeners.add(listener);
+    return () => {
+      lapListeners.delete(listener);
+    };
   },
 
   /** Scroll position at which a section is entered: content at the top, fully revealed. */

@@ -1,9 +1,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Matrix4, type InstancedMesh } from "three";
+import { Matrix4, type InstancedMesh, type MeshPhysicalMaterial } from "three";
 import type { FaceColor } from "@/data/navigation";
 import { createCubeLayout, type CubeLayout } from "@/lib/rubik/layout";
 import { FACE_COLORS } from "@/lib/rubik/model";
+import { createOpening, openingTransforms, type CubieOpening } from "@/lib/rubik/opening";
 import { createSeparation, separationReach, separationTransforms } from "@/lib/rubik/separation";
 import type { Quality } from "@/lib/three/quality";
 import { createCubeResources, readFaceColors } from "./cubeResources";
@@ -13,6 +14,9 @@ const LAYOUT = createCubeLayout();
 const SEPARATIONS = createSeparation(LAYOUT.cubies);
 const CUBIES = LAYOUT.cubies.length;
 const PANELS_PER_FACE = 9;
+/** How strongly the panels light themselves at rest, and how much more at the height of a flare. */
+const PANEL_GLOW = 0.6;
+const FLARE_GLOW = 1.5;
 
 const scratch = new Matrix4();
 
@@ -55,9 +59,10 @@ export function applyCubieTransforms(meshes: CubeMeshes, layout: CubeLayout, tra
  * lives in the layout, so pieces keep a stable identity.
  *
  * It has no transform of its own; whoever renders it decides where it is
- * and how it is turned, always as one rigid object. The one exception is the
- * finale, where the scroll pose's `spread` moves the cubies apart along
- * their fixed paths.
+ * and how it is turned, always as one rigid object. The exceptions come from
+ * the scroll pose: `open` turns its layers and then sends the cubies out of
+ * the view, and in the finale `spread` moves them apart along fixed paths.
+ * Either way a cubie's shell, core and panels travel together.
  */
 export function RubiksCube({ quality }: { quality: Quality }) {
   const [resources] = useState(() => createCubeResources(readFaceColors(), quality));
@@ -67,8 +72,9 @@ export function RubiksCube({ quality }: { quality: Quality }) {
   const meshes = useRef<CubeMeshes | null>(null);
   /** One transform per cubie, reused every time the spread changes. */
   const transforms = useRef(LAYOUT.rest.map((matrix) => matrix.clone()));
-  const appliedSpread = useRef(0);
-  const appliedReach = useRef(1);
+  const applied = useRef({ open: 0, spread: 0, aspect: 0, flare: 0 });
+  /** The opening depends on the shape of the view, so it is rebuilt when that changes. */
+  const opening = useRef<{ aspect: number; cubies: CubieOpening[] } | null>(null);
 
   useEffect(() => () => resources.dispose(), [resources]);
 
@@ -83,15 +89,37 @@ export function RubiksCube({ quality }: { quality: Quality }) {
     applyCubieTransforms(meshes.current, LAYOUT, LAYOUT.rest);
   }, []);
 
-  // The finale. Matrices are rewritten only on frames where something actually changed.
+  // The opening and the finale. Everything is rewritten only on frames where something actually changed.
   useFrame((state) => {
-    const spread = sceneFrame.choreographed ? sceneFrame.pose.spread : 0;
-    const reach = separationReach(state.size.width / state.size.height);
     if (!meshes.current) return;
-    if (spread === appliedSpread.current && (spread === 0 || reach === appliedReach.current)) return;
-    appliedSpread.current = spread;
-    appliedReach.current = reach;
-    applyCubieTransforms(meshes.current, LAYOUT, separationTransforms(transforms.current, SEPARATIONS, spread, reach));
+    const { pose, choreographed } = sceneFrame;
+    const open = choreographed ? pose.open : 0;
+    const spread = choreographed ? pose.spread : 0;
+    const flare = choreographed ? pose.flare : 0;
+    const aspect = state.size.width / state.size.height;
+    const last = applied.current;
+
+    // The flare lights the cube from within: every panel shines brighter.
+    if (flare !== last.flare) {
+      last.flare = flare;
+      for (const face of FACE_COLORS) {
+        (meshes.current.panels[face].material as MeshPhysicalMaterial).emissiveIntensity = PANEL_GLOW + FLARE_GLOW * flare;
+      }
+    }
+
+    const whole = open === 0 && spread === 0;
+    if (open === last.open && spread === last.spread && (whole || aspect === last.aspect)) return;
+    last.open = open;
+    last.spread = spread;
+    last.aspect = aspect;
+
+    if (open > 0) {
+      if (opening.current?.aspect !== aspect) opening.current = { aspect, cubies: createOpening(LAYOUT.cubies, aspect) };
+      applyCubieTransforms(meshes.current, LAYOUT, openingTransforms(transforms.current, opening.current.cubies, open));
+    } else {
+      const reach = separationReach(aspect);
+      applyCubieTransforms(meshes.current, LAYOUT, separationTransforms(transforms.current, SEPARATIONS, spread, reach));
+    }
   });
 
   return (

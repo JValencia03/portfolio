@@ -1,9 +1,11 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Placeholder } from "@/components/ui/Placeholder";
 import { SectionLink } from "@/components/ui/SectionLink";
 import { TiltCard } from "@/components/ui/TiltCard";
+import { getSectionColor } from "@/data/navigation";
 import { projects, type Project } from "@/data/projects";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { SectionShell } from "./SectionShell";
@@ -14,9 +16,15 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
   const titleId = `project-${project.id}-title`;
 
   return (
-    <li className="reveal">
+    // Each project wears its own face of the cube; --i orders the cards as the opening cube reveals them.
+    <li
+      className="reveal project-card"
+      data-face={getSectionColor(project.id) ?? undefined}
+      style={{ "--i": index } as CSSProperties}
+    >
       <TiltCard className="h-full">
-        <article aria-labelledby={titleId} className="card flex h-full flex-col">
+        {/* A container: the details below lay out by the card's own width, not the viewport's. */}
+        <article aria-labelledby={titleId} className="card @container flex h-full flex-col">
           <div className="media-slot">
             <span aria-hidden="true" className="media-index">
               P/{String(index + 1).padStart(2, "0")}
@@ -29,7 +37,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
             )}
           </div>
 
-          <div className="flex flex-1 flex-col p-6 md:p-8">
+          <div className="flex flex-1 flex-col p-6 md:p-8 lg:p-6 xl:p-8">
             <h3 id={titleId} className="card-title text-2xl md:text-3xl">
               {project.name}
             </h3>
@@ -41,8 +49,8 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
               {project.description[locale] ?? <Placeholder label={copy.placeholders.description} />}
             </p>
 
-            <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div>
+            <dl className="mt-6 grid gap-4 @md:grid-cols-2">
+              <div className="min-w-0">
                 <dt className="block-label">{copy.technologies}</dt>
                 <dd className="mt-2">
                   {project.technologies.length > 0 ? (
@@ -58,7 +66,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                   )}
                 </dd>
               </div>
-              <div>
+              <div className="min-w-0">
                 <dt className="block-label">{copy.status}</dt>
                 <dd className="mt-2 text-fog-100">
                   {project.status[locale] ?? <Placeholder label={copy.placeholders.status} />}
@@ -84,7 +92,7 @@ export function ProjectsSection() {
 
   return (
     <SectionShell id="projects" eyebrow={copy.eyebrow} title={copy.title}>
-      <ul className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      <ul className="grid gap-6 lg:grid-cols-3 xl:gap-8">
         {projects.map((project, index) => (
           <ProjectCard key={project.id} project={project} index={index} />
         ))}

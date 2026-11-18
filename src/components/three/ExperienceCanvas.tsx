@@ -17,9 +17,13 @@ import { CAMERA_FOV, CAMERA_REST_Z, sceneFrame } from "./sceneFrame";
 
 /** How much the pixel ratio changes each time the frame rate asks for it. */
 const DPR_STEP = 0.25;
-/** Distances from the camera between which the background fades into the dark. */
+/**
+ * Distances from the camera between which the background fades into the dark.
+ * The farthest cubes of the field stop short of the far end, so even they
+ * keep a trace of their tiles and still read as cubes rather than as blots.
+ */
 const FOG_NEAR = 14;
-const FOG_FAR = 40;
+const FOG_FAR = 50;
 
 /** Tells the page the scene is drawing, so the static stand-in can step aside. */
 function ReadySignal() {

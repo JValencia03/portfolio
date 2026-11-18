@@ -1,17 +1,15 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { MathUtils } from "three";
 import { getSectionFace } from "@/data/navigation";
 import { CUBE, CUBE_EDGE } from "@/lib/rubik/dimensions";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { computeScenePose } from "@/lib/scroll/choreography";
 import { scrollStore } from "@/lib/scroll/scrollStore";
 import { resolveTimeline } from "@/lib/scroll/timeline";
+import { STAGE_FILL, TAN_HALF_FOV } from "@/lib/three/view";
 import { clearPortalWindow, setPortalWindow } from "./portalWindow";
-import { CAMERA_FOV, CAMERA_REST_Z, sceneFrame } from "./sceneFrame";
+import { CAMERA_REST_Z, sceneFrame } from "./sceneFrame";
 
-/** Share of the viewport's smaller side that the cube's edge spans on stage. */
-const STAGE_FILL = 0.4;
 /**
  * At the end of the approach to the panel, the panel must cover the whole
  * view with room to spare, so the window's rounded corners are off screen.
@@ -33,7 +31,6 @@ const SCROLL_DAMPING = 14;
 /** A scroll change larger than this many screens in one frame is a jump, not a scroll. */
 const JUMP_SCREENS = 1.2;
 
-const TAN_HALF_FOV = Math.tan(MathUtils.degToRad(CAMERA_FOV) / 2);
 
 /**
  * The bridge between scroll and WebGL — and, for the portal, back to the DOM.
@@ -51,6 +48,7 @@ const TAN_HALF_FOV = Math.tan(MathUtils.degToRad(CAMERA_FOV) / 2);
 export function SceneDirector() {
   const reducedMotion = useReducedMotion();
   const seenJumps = useRef(-1);
+  const seenLaps = useRef(0);
   const lastTint = useRef("");
 
   useEffect(
@@ -87,6 +85,14 @@ export function SceneDirector() {
     const target = window.scrollY;
     const jumped = seenJumps.current !== scrollStore.jumps;
     seenJumps.current = scrollStore.jumps;
+    // The scroll has gone round: the position restarts from the top showing the
+    // same picture, so the scene carries on from there, lag included, without a cut.
+    if (seenLaps.current !== scrollStore.laps) {
+      const length = (scrollStore.laps - seenLaps.current) * (scrollStore.loopEnd ?? 0);
+      seenLaps.current = scrollStore.laps;
+      sceneFrame.scroll -= length;
+      sceneFrame.lapOffset += length;
+    }
     const distance = Math.abs(target - sceneFrame.scroll);
     if (jumped || distance > JUMP_SCREENS * timeline.viewport || distance < 0.05) {
       sceneFrame.scroll = target;
@@ -147,10 +153,10 @@ export function SceneDirector() {
     }
 
     // --- Visibility ----------------------------------------------------------------
-    // While the Rubik's Cube is not drawn, a section is in charge and only the
-    // environment shows: it is dimmed. The switch happens behind the portal's
-    // opaque backdrop, so the change itself is never seen.
-    const visibility = pose.presence * (pose.shown ? 1 : READING_DIM);
+    // While a section is read only the environment shows, and it is dimmed. Behind
+    // a face that switch happens under the portal's opaque backdrop; when the cube
+    // opens instead, the scene steps back gradually as its pieces leave the view.
+    const visibility = pose.presence * (1 - (1 - READING_DIM) * pose.dim);
     const opacity = visibility >= 0.999 ? "" : visibility.toFixed(3);
     const canvas = state.gl.domElement;
     if (canvas.style.opacity !== opacity) canvas.style.opacity = opacity;

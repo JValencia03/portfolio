@@ -1,17 +1,18 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Color, MeshStandardMaterial, Object3D, Vector3, type InstancedMesh } from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { getSectionFace, type FaceColor } from "@/data/navigation";
+import type { FaceColor } from "@/data/navigation";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { FACE_COLORS } from "@/lib/rubik/model";
 import { createFloatingField, easeDisplacement, repulsionTarget, wrap } from "@/lib/three/floatingField";
 import { pointer } from "@/lib/three/pointer";
 import type { Quality } from "@/lib/three/quality";
+import { createFloatingCubeGeometry } from "./floatingCubeGeometry";
 import { readFaceColors } from "./cubeResources";
+import { sceneLight } from "./sceneLight";
 import { CAMERA_FOV, CAMERA_REST_Z, sceneFrame } from "./sceneFrame";
 
-/** Depth of the field: everything sits behind the Rubik's Cube, which is at z = 0. */
+/** Depth of the field: everything sits behind the cube, which is at z = 0. */
 const NEAR_Z = -6;
 const FAR_Z = -30;
 /** The field extends this far past the visible area, so cubes wrap around out of sight. */
@@ -38,18 +39,26 @@ const REPEL_RADIUS = 0.2;
 /** Farthest a cube is pushed, as a share of that reach. Kept subtle. */
 const REPEL_PUSH = 0.45;
 
+/** Range of the gray each cube's tiles are multiplied by, in linear light. */
+const TILE_SHADE = { darkest: 0.09, lightest: 0.26 } as const;
+
 const TAN_HALF_FOV = Math.tan((CAMERA_FOV * Math.PI) / 360);
 
 /**
- * The environment: a field of dark cubes floating at different depths behind
- * everything else.
+ * The environment: a field of Rubik's Cubes in black and gray, floating at
+ * different depths behind everything else.
+ *
+ * Each one is built like the cube in the foreground — 26 rounded cubies
+ * with a seam between them and a rounded tile on every outer side — with
+ * the color taken out: the six faces keep six tones of gray.
  *
  * Depth is conveyed several ways at once — perspective and size, fog that
  * swallows the far ones, nearer cubes drifting and scrolling past faster,
  * and a slight shift against the pointer. Cubes close to the pointer ease
  * out of its way and drift back.
  *
- * All of them are drawn with two instanced meshes: the plain ones, and a few
+ * A whole cube is one instance, so the field is three draw calls: the dark
+ * bodies of all of them, the tiles of the plain ones, and the tiles of a few
  * that glow in the color of the face in charge. The whole field starts black
  * and gray and only takes on color as a face becomes active.
  *
@@ -59,6 +68,7 @@ const TAN_HALF_FOV = Math.tan((CAMERA_FOV * Math.PI) / 360);
  */
 export function FloatingCubes({ quality }: { quality: Quality }) {
   const reducedMotion = useReducedMotion();
+  const bodyMesh = useRef<InstancedMesh>(null);
   const plainMesh = useRef<InstancedMesh>(null);
   const accentMesh = useRef<InstancedMesh>(null);
 
@@ -72,19 +82,27 @@ export function FloatingCubes({ quality }: { quality: Quality }) {
 
   const [resources] = useState(() => {
     const tokens = readFaceColors();
+    // Tiles sit a hair above the cubies. Far away that gap is thinner than the
+    // depth buffer can resolve, so they are also drawn slightly toward the camera.
+    const tile = {
+      color: "#ffffff",
+      vertexColors: true,
+      roughness: 0.42,
+      metalness: 0.12,
+      envMapIntensity: 0.08,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    };
     return {
-      geometry: new RoundedBoxGeometry(1, 1, 1, 2, 0.07),
-      // White base color: each instance supplies its own dark gray.
-      // Almost no reflections: the studio lights around the Rubik's Cube are tinted,
+      geometry: createFloatingCubeGeometry(),
+      // Almost no reflections: the studio lights around the cube are tinted,
       // and this field must read as plain black and graphite until a face colors it.
-      plain: new MeshStandardMaterial({ color: "#ffffff", roughness: 0.55, metalness: 0.15, envMapIntensity: 0.05 }),
-      accent: new MeshStandardMaterial({
-        color: "#141414",
-        roughness: 0.5,
-        metalness: 0.15,
-        envMapIntensity: 0.05,
-        emissive: "#000000",
-      }),
+      body: new MeshStandardMaterial({ color: "#1b1c20", roughness: 0.5, metalness: 0.25, envMapIntensity: 0.05 }),
+      // White base color: the tone of each face comes from the geometry, and
+      // each instance multiplies it by its own shade of gray.
+      plain: new MeshStandardMaterial(tile),
+      accent: new MeshStandardMaterial({ ...tile, emissive: "#000000" }),
       faceColors: Object.fromEntries(FACE_COLORS.map((face) => [face, new Color(tokens[face])])) as Record<FaceColor, Color>,
     };
   });
@@ -97,28 +115,32 @@ export function FloatingCubes({ quality }: { quality: Quality }) {
   useEffect(
     () => () => {
       resources.geometry.dispose();
+      resources.body.dispose();
       resources.plain.dispose();
       resources.accent.dispose();
     },
     [resources],
   );
 
-  // Each plain cube gets its own shade of graphite.
+  // Each cube gets its own shade of gray, which scales the tones of its six faces.
   useLayoutEffect(() => {
-    const mesh = plainMesh.current;
-    if (!mesh) return;
     const gray = new Color();
-    for (let index = 0; index < plainCount; index++) {
-      const value = 0.04 + cubes[index].shade * 0.1;
-      mesh.setColorAt(index, gray.setRGB(value, value, value));
+    cubes.forEach((cube, index) => {
+      const mesh = index < plainCount ? plainMesh.current : accentMesh.current;
+      if (!mesh) return;
+      const value = TILE_SHADE.darkest + cube.shade * (TILE_SHADE.lightest - TILE_SHADE.darkest);
+      mesh.setColorAt(index < plainCount ? index : index - plainCount, gray.setRGB(value, value, value));
+    });
+    for (const mesh of [plainMesh.current, accentMesh.current]) {
+      if (mesh?.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [cubes, plainCount]);
 
   useFrame((state, rawDelta) => {
+    const body = bodyMesh.current;
     const plain = plainMesh.current;
     const accent = accentMesh.current;
-    if (!plain) return;
+    if (!body || !plain) return;
 
     const { object, axis, push } = scratch.current;
     const offsets = displacement.current;
@@ -127,13 +149,18 @@ export function FloatingCubes({ quality }: { quality: Quality }) {
     // Keep the field's density on screen roughly constant across aspect ratios.
     // The cubes are generated evenly spread, so any leading share of them is too.
     const density = Math.min(1, Math.max(MIN_DENSITY, aspect / FULL_DENSITY_ASPECT));
-    plain.count = Math.ceil(plainCount * density);
-    if (accent) accent.count = Math.ceil(accentCount * density);
+    const plainShown = Math.ceil(plainCount * density);
+    const accentShown = Math.ceil(accentCount * density);
+    plain.count = plainShown;
+    if (accent) accent.count = accentShown;
+    // Bodies of the plain cubes first, then those of the accent cubes, with no gap between them.
+    body.count = plainShown + accentShown;
     const delta = Math.min(rawDelta, 0.1);
 
     // With reduced motion the field holds still: no drift, no parallax, no push.
     const time = reducedMotion ? 0 : state.clock.elapsedTime;
-    const scrollScreens = reducedMotion || !sceneFrame.choreographed ? 0 : sceneFrame.scroll / state.size.height;
+    const scrollScreens =
+      reducedMotion || !sceneFrame.choreographed ? 0 : (sceneFrame.lapOffset + sceneFrame.scroll) / state.size.height;
     const repel = pointer.active && !reducedMotion;
 
     const pointerEase = 1 - Math.exp(-POINTER_DAMPING * delta);
@@ -177,30 +204,47 @@ export function FloatingCubes({ quality }: { quality: Quality }) {
       object.scale.setScalar(cube.size);
       object.updateMatrix();
 
-      if (index < plainCount) plain.setMatrixAt(index, object.matrix);
-      else accent?.setMatrixAt(index - plainCount, object.matrix);
+      if (index < plainCount) {
+        plain.setMatrixAt(index, object.matrix);
+        if (index < plainShown) body.setMatrixAt(index, object.matrix);
+      } else {
+        const slot = index - plainCount;
+        accent?.setMatrixAt(slot, object.matrix);
+        if (slot < accentShown) body.setMatrixAt(plainShown + slot, object.matrix);
+      }
     }
+    body.instanceMatrix.needsUpdate = true;
     plain.instanceMatrix.needsUpdate = true;
     if (accent) accent.instanceMatrix.needsUpdate = true;
 
-    // Accent cubes glow in the color of the face in charge, as strongly as the scroll-driven light.
+    // The tiles of the accent cubes glow in the color of the face in charge, as strongly as the scroll-driven light.
     if (accent) {
       const glow = accent.material as MeshStandardMaterial;
-      const face = sceneFrame.choreographed ? getSectionFace(sceneFrame.pose.tintSection) : null;
-      if (face) glow.emissive.copy(resources.faceColors[face]);
-      glow.emissiveIntensity = face ? sceneFrame.pose.tint * 0.32 : 0;
+      glow.emissive.copy(sceneLight.color);
+      glow.emissiveIntensity = sceneLight.strength * 0.32;
     }
   });
 
   return (
     // Instances are spread over the whole view, so the meshes are never culled as a unit.
     <group name="floating-cubes">
-      <instancedMesh ref={plainMesh} name="floating:plain" args={[resources.geometry, resources.plain, plainCount]} frustumCulled={false} />
+      <instancedMesh
+        ref={bodyMesh}
+        name="floating:bodies"
+        args={[resources.geometry.body, resources.body, cubes.length]}
+        frustumCulled={false}
+      />
+      <instancedMesh
+        ref={plainMesh}
+        name="floating:plain"
+        args={[resources.geometry.tiles, resources.plain, plainCount]}
+        frustumCulled={false}
+      />
       {accentCount > 0 && (
         <instancedMesh
           ref={accentMesh}
           name="floating:accent"
-          args={[resources.geometry, resources.accent, accentCount]}
+          args={[resources.geometry.tiles, resources.accent, accentCount]}
           frustumCulled={false}
         />
       )}

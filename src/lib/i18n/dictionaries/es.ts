@@ -12,6 +12,7 @@ const es: Dictionary = {
       contact: "Contacto",
       distance: "Distance — Caso de estudio",
       dodaman: "Dodaman — Caso de estudio",
+      lcdr: "LCDR — Caso de estudio",
       resume: "Currículum",
     },
     descriptions: {
@@ -22,6 +23,7 @@ const es: Dictionary = {
       contact: "Contacta con {name}, Desarrollador Full Stack.",
       distance: "Caso de estudio de Distance, un proyecto de {name}.",
       dodaman: "Caso de estudio de Dodaman (Document Dashboard Management), un proyecto de {name}.",
+      lcdr: "Caso de estudio de LCDR, un proyecto de {name}.",
       resume: "Currículum de {name}, Desarrollador Full Stack.",
     },
   },
@@ -32,6 +34,7 @@ const es: Dictionary = {
   },
   faces: {
     label: "Cara",
+    inside: "Dentro del cubo",
     white: "Blanca",
     yellow: "Amarilla",
     blue: "Azul",
@@ -41,6 +44,7 @@ const es: Dictionary = {
   },
   frame: {
     progress: "Progreso",
+    lap: "Vuelta",
     backToTop: "Volver arriba",
     builtWith: "Hecho con",
   },

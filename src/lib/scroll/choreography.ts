@@ -1,7 +1,8 @@
 import { Quaternion } from "three";
 import { getSectionFace, type SectionId } from "../../data/navigation.ts";
-import { FACE_ORIENTATIONS, HERO_ORIENTATION } from "../rubik/orientation.ts";
-import { easeInOutCubic, easeOutCubic, smoothstep } from "./easing.ts";
+import { SCRAMBLED } from "../rubik/opening.ts";
+import { FACE_ORIENTATIONS, HERO_ORIENTATION, OPEN_ORIENTATION, turntable } from "../rubik/orientation.ts";
+import { clamp01, easeInOutCubic, easeOutCubic, smoothstep } from "./easing.ts";
 import type { ScrollSnapshot } from "./timeline.ts";
 
 /**
@@ -24,7 +25,15 @@ import type { ScrollSnapshot } from "./timeline.ts";
  *   iris   how far the window has opened within the panel (0 shut, 1 the whole panel)
  *   glow   face-colored light filling the window (the panel "igniting")
  *   veil   opaque backdrop behind the content, hiding the scene around it
- *   shown  whether the 3D scene is drawn at all
+ *   shown  whether the cube is drawn at all
+ *
+ * The opening
+ * -----------
+ * The projects are not behind a face: they are inside the cube. To reach
+ * them the cube is turned layer by layer and then comes apart, its pieces
+ * flying out of the view (`open`, see lib/rubik/opening.ts) while a light
+ * blooms where it was (`flare`). Leaving them runs the same thing backward:
+ * the pieces return and the cube solves itself.
  */
 export interface ScenePose {
   /** Orientation of the cube as a whole, before idle motion. */
@@ -35,18 +44,24 @@ export interface ScenePose {
   dolly: number;
   /** Opacity of the scene, 0 to 1. */
   presence: number;
+  /** How far the scene has stepped back behind content being read, 0 to 1. Always 1 while the cube is not drawn. */
+  dim: number;
   /** How much idle motion (float, sway, pointer) applies, 0 to 1. */
   idle: number;
-  /** False once the portal window covers the whole viewport: nothing of the scene can be seen. */
+  /** False while a section is read: the cube is not drawn, only the environment. */
   shown: boolean;
   iris: number;
   glow: number;
   veil: number;
+  /** How far the cube has been opened. 0 whole and solved, up to SCRAMBLED its layers turn, 1 its pieces are gone. */
+  open: number;
   /** Finale: how far the cube has come apart into its cubies. 0 assembled, 1 fully separated. */
   spread: number;
-  /** Strength of the face-colored light in the environment, 0 to 1. */
+  /** Light blooming from the middle of the cube, 0 to 1. */
+  flare: number;
+  /** Strength of the colored light in the environment, 0 to 1. */
   tint: number;
-  /** Section whose face color the environment light takes. */
+  /** Section whose color the environment light takes. */
   tintSection: SectionId;
 }
 
@@ -56,12 +71,15 @@ export function createScenePose(): ScenePose {
     stage: 0,
     dolly: 0,
     presence: 1,
+    dim: 0,
     idle: 1,
     shown: true,
     iris: 0,
     glow: 1,
     veil: 1,
+    open: 0,
     spread: 0,
+    flare: 0,
     tint: 1,
     tintSection: "hero",
   };
@@ -100,6 +118,58 @@ export const EXIT = {
 } as const;
 
 /**
+ * Timing inside UNLOCKING: the cube leaves the hero for the middle of the
+ * stage and its layers start to turn almost at once, so it arrives already
+ * in motion. By the end it is scrambled and a first light shows in its seams.
+ */
+export const UNLOCK = {
+  /** The cube reaches the middle of the stage, as the hero finishes scrolling away. */
+  settle: 0.5,
+  /** Idle motion has handed over to the scroll. */
+  idleEnd: 0.2,
+  /** The layers turn, one after another. */
+  turn: [0.12, 1],
+  /** The light inside begins to show. */
+  ember: [0.55, 1],
+} as const;
+/** How bright that first light is: the flare the opening starts from. */
+const EMBER = 0.2;
+
+/**
+ * Timing inside OPENING, which lasts exactly the screen the revealed content
+ * is pinned for: the pieces fly out while the light blooms and fades, and the
+ * content comes forward where the cube was (its own reveal is a scroll
+ * animation in CSS, on the same screen).
+ */
+export const OPENING = {
+  /** The pieces leave; the last one is out of view by the end. */
+  flight: [0, 0.85],
+  /** The light is at its brightest, then gone. */
+  flarePeak: 0.3,
+  flareEnd: 0.85,
+  /** The environment steps back behind the content. */
+  dim: [0.7, 1],
+  /** The light of the revealed section rises. */
+  tint: [0.4, 1],
+} as const;
+
+/**
+ * Timing inside CLOSING, the opening run backward over the screen the last
+ * section inside the cube takes to scroll away: the pieces return, the
+ * layers turn back, and the cube flashes as it clicks into place, solved.
+ */
+export const CLOSE = {
+  /** The environment comes forward again. */
+  dim: [0, 0.3],
+  /** The pieces return and the layers turn back. */
+  gather: [0.05, 0.85],
+  /** The light rises as the last layers turn… */
+  flare: [0.45, 0.8],
+  /** …and fades once the cube is whole. */
+  flareEnd: [0.82, 1],
+} as const;
+
+/**
  * Timing inside FINALE, as fractions of its progress: the cube turns back to
  * its three-quarter view, holds for a moment whole and solved, then comes
  * apart while the closing content is revealed.
@@ -108,6 +178,31 @@ export const FINALE = {
   turnEnd: 0.38,
   separate: [0.46, 0.9],
 } as const;
+
+/**
+ * Timing inside LOOP: the way from the end back to the start. Over its first
+ * half the closing content scrolls away and the pieces gather; the cube
+ * flashes as it becomes whole, spins once on itself, and over the second half
+ * travels to the slot of the hero rising into view. It ends in exactly the
+ * pose the page starts with, which is what lets the scroll go round.
+ */
+export const LOOP = {
+  /** The pieces gather into the cube. */
+  gather: [0.04, 0.5],
+  /** One full turn on the cube's own axis. */
+  spin: [0.28, 0.8],
+  /** The light rises as the last pieces arrive… */
+  flare: [0.36, 0.5],
+  /** …and fades while the cube spins. */
+  flareEnd: [0.52, 0.8],
+  /** The cube travels from the stage to its slot in the hero. */
+  settle: [0.5, 0.97],
+  /** Idle motion returns. */
+  idle: [0.78, 0.97],
+  /** The hero's own light returns. */
+  tint: [0.6, 0.97],
+} as const;
+
 /** Environment light that lingers while the cube turns between two faces. */
 const RESIDUAL_TINT = 0.25;
 
@@ -119,20 +214,28 @@ export function orientationOf(section: SectionId): Quaternion {
 
 const span = (range: readonly [number, number], value: number) => (value - range[0]) / (range[1] - range[0]);
 
+/** Orientation of the cube for how far it has been opened: it swings as its layers turn. */
+function openOrientation(out: Quaternion, from: SectionId, open: number): Quaternion {
+  return out.slerpQuaternions(orientationOf(from), OPEN_ORIENTATION, smoothstep(0, SCRAMBLED, open));
+}
+
 export function computeScenePose(out: ScenePose, snapshot: ScrollSnapshot): ScenePose {
   const { state, progress: p, from, to } = snapshot;
   const fromHero = from === "hero";
 
-  // Defaults: the cube centered on stage, aligned with the destination, at rest, window shut.
+  // Defaults: the cube centered on stage, whole, aligned with the destination, at rest, window shut.
   out.stage = 1;
   out.dolly = 0;
   out.presence = 1;
+  out.dim = 0;
   out.idle = 0;
   out.shown = true;
   out.iris = 0;
   out.glow = 1;
   out.veil = 1;
+  out.open = 0;
   out.spread = 0;
+  out.flare = 0;
   out.tint = 0;
   out.tintSection = to;
   out.orientation.copy(orientationOf(to));
@@ -144,17 +247,53 @@ export function computeScenePose(out: ScenePose, snapshot: ScrollSnapshot): Scen
       out.tint = 1;
       break;
 
-    case "ROTATING": {
-      // Shortest arc between the two orientations, including 180° turns.
-      out.orientation.slerpQuaternions(orientationOf(from), orientationOf(to), easeInOutCubic(p));
-      // The light of the section just left fades out as the cube turns away from it.
+    case "UNLOCKING":
+      // Linear here: each move applies its own easing (lib/rubik/opening.ts).
+      out.open = SCRAMBLED * clamp01(span(UNLOCK.turn, p));
+      openOrientation(out.orientation, from, out.open);
+      out.flare = EMBER * smoothstep(UNLOCK.ember[0], UNLOCK.ember[1], p);
+      // The light of the section just left fades out as the cube starts to turn.
       out.tintSection = from;
       out.tint = (fromHero ? 1 : RESIDUAL_TINT) * (1 - smoothstep(0, 0.6, p));
       if (fromHero) {
         // The cube lets go of its hero slot early, so it holds its place on
         // screen while the hero scrolls away instead of riding up with it.
+        out.stage = easeOutCubic(Math.min(1, p / UNLOCK.settle));
+        // Idle motion fades out as the scroll takes over.
+        out.idle = 1 - smoothstep(0, UNLOCK.idleEnd, p);
+      }
+      break;
+
+    case "OPENING":
+      // Linear here: each piece applies its own easing and delay.
+      out.open = SCRAMBLED + (1 - SCRAMBLED) * clamp01(span(OPENING.flight, p));
+      out.orientation.copy(OPEN_ORIENTATION);
+      out.flare =
+        p < OPENING.flarePeak
+          ? EMBER + (1 - EMBER) * smoothstep(0, OPENING.flarePeak, p)
+          : 1 - smoothstep(OPENING.flarePeak, OPENING.flareEnd, p);
+      out.dim = smoothstep(OPENING.dim[0], OPENING.dim[1], p);
+      out.tint = smoothstep(OPENING.tint[0], OPENING.tint[1], p);
+      break;
+
+    case "CLOSING":
+      out.open = 1 - clamp01(span(CLOSE.gather, p));
+      openOrientation(out.orientation, from, out.open);
+      out.flare = smoothstep(CLOSE.flare[0], CLOSE.flare[1], p) * (1 - smoothstep(CLOSE.flareEnd[0], CLOSE.flareEnd[1], p));
+      out.dim = 1 - smoothstep(CLOSE.dim[0], CLOSE.dim[1], p);
+      // The section's light dims as the cube takes the stage back.
+      out.tintSection = from;
+      out.tint = 1 - (1 - RESIDUAL_TINT) * smoothstep(0, 1, p);
+      break;
+
+    case "ROTATING": {
+      // Shortest arc between the two orientations, whatever the angle between them.
+      out.orientation.slerpQuaternions(orientationOf(from), orientationOf(to), easeInOutCubic(p));
+      // The light of the section just left fades out as the cube turns away from it.
+      out.tintSection = from;
+      out.tint = (fromHero ? 1 : RESIDUAL_TINT) * (1 - smoothstep(0, 0.6, p));
+      if (fromHero) {
         out.stage = easeOutCubic(p);
-        // Idle motion fades out as the deterministic rotation takes over.
         out.idle = 1 - smoothstep(0, 0.35, p);
       }
       break;
@@ -179,16 +318,23 @@ export function computeScenePose(out: ScenePose, snapshot: ScrollSnapshot): Scen
       break;
 
     case "INSIDE_SECTION":
-      out.dolly = 2;
       out.shown = false;
       out.iris = 1;
       out.glow = 0;
       out.veil = 0;
       out.tint = 1;
+      if (getSectionFace(to)) {
+        // Behind a face: the camera is inside its center panel.
+        out.dolly = 2;
+      } else {
+        // Inside the cube: it stays open, its pieces out of view.
+        out.open = 1;
+        out.orientation.copy(OPEN_ORIENTATION);
+      }
       break;
 
     case "EXITING": {
-      const retreat = Math.min(1, Math.max(0, span(EXIT.retreat, p)));
+      const retreat = clamp01(span(EXIT.retreat, p));
       // Out through the panel first, then back to the resting distance.
       out.dolly = p < EXIT.retreat[1] ? 2 - easeInOutCubic(retreat) : 1 - easeInOutCubic(span([EXIT.retreat[1], 1], p));
       out.veil = smoothstep(0, EXIT.veilEnd, p);
@@ -203,11 +349,33 @@ export function computeScenePose(out: ScenePose, snapshot: ScrollSnapshot): Scen
     case "FINALE":
       out.orientation.slerpQuaternions(orientationOf(from), HERO_ORIENTATION, easeInOutCubic(Math.min(1, p / FINALE.turnEnd)));
       // Linear here: each cubie applies its own easing and delay (lib/rubik/separation.ts).
-      out.spread = Math.min(1, Math.max(0, span(FINALE.separate, p)));
+      out.spread = clamp01(span(FINALE.separate, p));
       out.tintSection = from;
       out.tint = RESIDUAL_TINT * (1 - smoothstep(0, FINALE.turnEnd, p));
       break;
+
+    case "FINALE_HOLD":
+      // The cube stays as the finale left it: apart, around the content.
+      out.spread = 1;
+      break;
+
+    case "LOOP": {
+      out.spread = 1 - clamp01(span(LOOP.gather, p));
+      const spin = smoothstep(LOOP.spin[0], LOOP.spin[1], p);
+      // A full turn ends where it began: past it, the orientation is exactly the hero's.
+      if (spin < 1) turntable(out.orientation, spin * 2 * Math.PI);
+      out.flare = smoothstep(LOOP.flare[0], LOOP.flare[1], p) * (1 - smoothstep(LOOP.flareEnd[0], LOOP.flareEnd[1], p));
+      // The departure from the hero, run backward: the cube joins its slot late,
+      // so it keeps its place on screen while the hero rises toward it.
+      out.stage = easeOutCubic(1 - clamp01(span(LOOP.settle, p)));
+      out.idle = smoothstep(LOOP.idle[0], LOOP.idle[1], p);
+      out.tint = smoothstep(LOOP.tint[0], LOOP.tint[1], p);
+      break;
+    }
   }
+
+  // With the cube out of the picture only the environment is left, stepped back.
+  if (!out.shown) out.dim = 1;
 
   return out;
 }

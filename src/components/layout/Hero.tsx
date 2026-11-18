@@ -14,21 +14,34 @@ const delay = (ms: number) => ({ "--enter-delay": `${ms}ms` }) as CSSProperties;
 /**
  * Hero. Desktop: identity | cube | stack. Mobile: identity, cube, primary
  * CTA, stack — the order is driven by grid areas in globals.css.
+ *
+ * It is rendered a second time at the very end of the document, as a
+ * `replica`: an inert copy that the scroll arrives at before continuing from
+ * the top, where the real one stands in exactly the same place (see LoopSeam).
+ * The copy has no ids and is hidden from assistive technology.
  */
-export function Hero() {
+export function Hero({ replica = false }: { replica?: boolean }) {
   const { locale, dictionary } = useI18n();
   const copy = dictionary.hero;
   const intro = profile.intro[locale];
+  const titleId = replica ? "hero-replica-title" : "hero-title";
+  const stackTitleId = replica ? "hero-replica-stack-title" : "hero-stack-title";
 
   return (
-    <section id="hero" aria-labelledby="hero-title" tabIndex={-1} className="section">
+    <section
+      id={replica ? undefined : "hero"}
+      data-replica={replica ? "" : undefined}
+      aria-labelledby={titleId}
+      tabIndex={replica ? undefined : -1}
+      className="section hero"
+    >
       <div className="section-inner hero-grid">
         <div className="hero-identity">
           <p className="eyebrow enter">
             <span className="eyebrow-dot" aria-hidden="true" />
             {copy.role}
           </p>
-          <HeroName id="hero-title" name={profile.name} />
+          <HeroName id={titleId} name={profile.name} />
           <p className="enter mt-6 max-w-md text-lg leading-relaxed text-fog-300" style={delay(700)}>
             {intro ?? <Placeholder label={copy.placeholders.intro} />}
           </p>
@@ -40,7 +53,7 @@ export function Hero() {
           and the permanent fallback when WebGL is unavailable.
         */}
         <div className="hero-cube">
-          <div aria-hidden="true" data-cube-anchor className="cube-slot">
+          <div aria-hidden="true" data-cube-anchor data-replica={replica ? "" : undefined} className="cube-slot">
             {Array.from({ length: 9 }, (_, cell) => (
               <span key={cell} />
             ))}
@@ -58,9 +71,9 @@ export function Hero() {
           </SectionLink>
         </div>
 
-        <aside className="hero-stack" aria-labelledby="hero-stack-title">
+        <aside className="hero-stack" aria-labelledby={stackTitleId}>
           <div className="enter" style={delay(950)}>
-          <h2 id="hero-stack-title" className="block-label">
+          <h2 id={stackTitleId} className="block-label">
             {copy.stackTitle}
           </h2>
           {profile.stack.length > 0 ? (

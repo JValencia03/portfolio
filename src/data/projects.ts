@@ -1,4 +1,5 @@
 import { PENDING, type Localized } from "./content";
+import type { SectionId } from "./navigation";
 
 export const CASE_STUDY_BLOCKS = [
   "overview",
@@ -19,7 +20,7 @@ export interface ProjectLink {
 
 export interface Project {
   /** Matches the section id of the project's case study. */
-  id: "distance" | "dodaman";
+  id: Extract<SectionId, "distance" | "dodaman" | "lcdr">;
   /** Project names are never translated. */
   name: string;
   expandedName?: string;
@@ -68,7 +69,22 @@ export const projects: Project[] = [
     caseStudy: emptyCaseStudy(),
     links: [],
   },
+  {
+    id: "lcdr",
+    name: "LCDR",
+    description: PENDING,
+    image: null,
+    technologies: [],
+    status: PENDING,
+    caseStudy: emptyCaseStudy(),
+    links: [],
+  },
 ];
+
+/** Whether a section is the case study of a project. */
+export function isProjectSection(id: SectionId): id is Project["id"] {
+  return projects.some((candidate) => candidate.id === id);
+}
 
 export function getProject(id: Project["id"]): Project {
   const project = projects.find((candidate) => candidate.id === id);

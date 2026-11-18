@@ -56,3 +56,20 @@ export const HERO_ORIENTATION = new Quaternion()
 export function visibleFaces(orientation: Quaternion, threshold = 1e-6): FaceColor[] {
   return FACE_COLORS.filter((face) => normalOf(face).applyQuaternion(orientation).z > threshold);
 }
+
+/** The cube's own vertical axis: yellow and white turn around it. */
+const VERTICAL = new Vector3(0, 1, 0);
+
+/**
+ * The hero's view turned around the cube's own vertical axis, as on a
+ * turntable: the top face stays on top while the sides go by.
+ */
+export function turntable(out: Quaternion, angle: number): Quaternion {
+  return out.setFromAxisAngle(VERTICAL, angle).premultiply(HERO_ORIENTATION);
+}
+
+/**
+ * Orientation the cube swings to while it is being opened: the hero's view,
+ * a little further around, so the turning layers are seen from a fresh angle.
+ */
+export const OPEN_ORIENTATION = turntable(new Quaternion(), -0.45).normalize();

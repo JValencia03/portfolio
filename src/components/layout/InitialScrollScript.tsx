@@ -1,8 +1,8 @@
 import { SECTIONS } from "@/data/navigation";
 
-/** Locale-less path → [section id, face color] for every section with a URL below the home page. */
+/** Locale-less path → [section id, cube color] for every section with a URL below the home page. */
 const targets = Object.fromEntries(
-  SECTIONS.flatMap((section) => (section.path ? [[section.path, [section.id, section.face]]] : [])),
+  SECTIONS.flatMap((section) => (section.path ? [[section.path, [section.id, section.color]]] : [])),
 );
 
 /**
@@ -14,7 +14,7 @@ const targets = Object.fromEntries(
  *    Without JavaScript the attribute is never set and the page is a plain
  *    document.
  * 2. On direct access to a section URL (e.g. /en/skills) it jumps straight
- *    into that section and applies its face color, so the visitor never sees
+ *    into that section and applies its color, so the visitor never sees
  *    the hero flash by and never has to replay the sequence. The target is
  *    the end of the section's pin — its height beyond its content — which is
  *    where the content is fully revealed (same rule as scrollStore, including

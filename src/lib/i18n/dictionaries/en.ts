@@ -21,6 +21,7 @@ const en = {
       contact: "Contact",
       distance: "Distance — Case study",
       dodaman: "Dodaman — Case study",
+      lcdr: "LCDR — Case study",
       resume: "Resume",
     } satisfies Record<SectionId, string> as Record<SectionId, string>,
     descriptions: {
@@ -31,6 +32,7 @@ const en = {
       contact: "Get in touch with {name}, Full Stack Developer.",
       distance: "Case study of Distance, a project by {name}.",
       dodaman: "Case study of Dodaman (Document Dashboard Management), a project by {name}.",
+      lcdr: "Case study of LCDR, a project by {name}.",
       resume: "Resume of {name}, Full Stack Developer.",
     } satisfies Record<SectionId, string> as Record<SectionId, string>,
   },
@@ -39,9 +41,10 @@ const en = {
     placeholder: "Placeholder",
     opensInNewTab: "opens in a new tab",
   },
-  /** The cube face a section lives on, shown as a small tag in its header. */
+  /** Where a section lives — on a face of the cube or inside it — shown as a small tag in its header. */
   faces: {
     label: "Face",
+    inside: "Inside the cube",
     white: "White",
     yellow: "Yellow",
     blue: "Blue",
@@ -52,6 +55,7 @@ const en = {
   /** Fixed marginalia and the closing colophon. */
   frame: {
     progress: "Progress",
+    lap: "Lap",
     backToTop: "Back to top",
     builtWith: "Built with",
   },

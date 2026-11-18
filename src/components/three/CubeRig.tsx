@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
-import { Quaternion, type Group } from "three";
+import { useEffect, useRef, useState } from "react";
+import { AdditiveBlending, CanvasTexture, Quaternion, SRGBColorSpace, type Group, type Sprite, type SpriteMaterial } from "three";
 import { idleFloat, idleTilt } from "@/lib/rubik/idle";
 import { HERO_ORIENTATION } from "@/lib/rubik/orientation";
 import { CUBE_EDGE } from "@/lib/rubik/dimensions";
@@ -10,7 +10,9 @@ import { RubiksCube } from "./RubiksCube";
 import { CAMERA_FOV, CAMERA_REST_Z, sceneFrame } from "./sceneFrame";
 
 /** The HTML element the cube sits on while idle (the hero's center column). */
-const ANCHOR_SELECTOR = "[data-cube-anchor]";
+const ANCHOR_SELECTOR = "[data-cube-anchor]:not([data-replica])";
+/** The same element in the copy of the hero that closes the document: where the loop brings the cube back to. */
+const REPLICA_SELECTOR = "[data-cube-anchor][data-replica]";
 
 /**
  * Side of the anchor element divided by the cube's edge. Above 1 so the
@@ -21,8 +23,32 @@ const ANCHOR_FIT = 1.4;
 /** How quickly the pointer's influence follows the pointer; higher is snappier. */
 const POINTER_DAMPING = 4;
 
+/** Width of the flare, in cube edges: as it first shows and at its brightest. */
+const FLARE_SIZE = { ember: 1.5, full: 4.6 } as const;
+
 const TAN_HALF_FOV = Math.tan((CAMERA_FOV * Math.PI) / 360);
 const IDENTITY = new Quaternion();
+
+/** A soft disc of light: white-hot in the middle, falling away to nothing well before its edge. */
+function createFlareTexture(): CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (context) {
+    const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+    gradient.addColorStop(0.12, "rgba(255, 248, 232, 0.82)");
+    gradient.addColorStop(0.34, "rgba(255, 226, 190, 0.3)");
+    gradient.addColorStop(0.62, "rgba(255, 210, 170, 0.08)");
+    gradient.addColorStop(1, "rgba(255, 210, 170, 0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
 
 /**
  * Places, sizes and turns the cube for the current frame.
@@ -36,28 +62,42 @@ const IDENTITY = new Quaternion();
  * (float, sway, a bounded lean toward the pointer), weighted by the pose —
  * idle motion fades out as soon as a scroll transition takes over.
  *
+ * It also carries the flare: light that blooms from the middle of the cube
+ * as it opens, closes or comes back together, drawn over its pieces.
+ *
  * Everything happens in refs inside the render loop: no React renders.
  */
 export function CubeRig({ quality }: { quality: Quality }) {
   const rig = useRef<Group>(null);
   const cube = useRef<Group>(null);
+  const flare = useRef<Sprite>(null);
   const anchor = useRef<Element | null>(null);
+  const replica = useRef<Element | null>(null);
   const eased = useRef({ x: 0, y: 0 });
   const tilt = useRef(new Quaternion());
+  const [flareTexture] = useState(createFlareTexture);
 
   useEffect(() => {
     anchor.current = document.querySelector(ANCHOR_SELECTOR);
   }, []);
+  useEffect(() => () => flareTexture.dispose(), [flareTexture]);
 
   useFrame((state, rawDelta) => {
     const rigGroup = rig.current;
     const cubeGroup = cube.current;
-    const element = anchor.current;
-    if (!rigGroup || !cubeGroup || !element) return;
+    if (!rigGroup || !cubeGroup || !anchor.current) return;
 
-    const { pose, choreographed } = sceneFrame;
+    const { pose, choreographed, snapshot } = sceneFrame;
     const stage = choreographed ? pose.stage : 0;
     const { width, height } = state.size;
+
+    // On the way back to the start the cube heads for the copy of the hero rising
+    // into view; it stands where the real one will once the scroll has gone round.
+    let element = anchor.current;
+    if (choreographed && snapshot.state === "LOOP") {
+      replica.current ??= document.querySelector(REPLICA_SELECTOR);
+      element = replica.current ?? element;
+    }
 
     // --- Placement -----------------------------------------------------------
     const rect = element.getBoundingClientRect();
@@ -76,6 +116,19 @@ export function CubeRig({ quality }: { quality: Quality }) {
     rigGroup.position.x = anchorX * (1 - stage);
     rigGroup.position.y = anchorY * (1 - stage);
     rigGroup.scale.setScalar(anchorScale + (sceneFrame.stageScale - anchorScale) * stage);
+
+    // --- Flare -----------------------------------------------------------------
+    const sprite = flare.current;
+    if (sprite) {
+      const strength = choreographed ? pose.flare : 0;
+      sprite.visible = strength > 0.001;
+      if (sprite.visible) {
+        // It swells as it brightens; quality tiers without the glass keep it a little tighter.
+        const reach = quality.transmission ? 1 : 0.85;
+        sprite.scale.setScalar(CUBE_EDGE * reach * (FLARE_SIZE.ember + (FLARE_SIZE.full - FLARE_SIZE.ember) * strength));
+        (sprite.material as SpriteMaterial).opacity = Math.min(1, strength * 1.15);
+      }
+    }
 
     // --- Orientation -----------------------------------------------------------
     if (!choreographed) {
@@ -111,6 +164,18 @@ export function CubeRig({ quality }: { quality: Quality }) {
       <group ref={cube} quaternion={HERO_ORIENTATION}>
         <RubiksCube quality={quality} />
       </group>
+      {/* Light is added on top of whatever is there, pieces included, and never hides behind them. */}
+      <sprite ref={flare} visible={false} renderOrder={10}>
+        <spriteMaterial
+          map={flareTexture}
+          blending={AdditiveBlending}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+          fog={false}
+          toneMapped={false}
+        />
+      </sprite>
     </group>
   );
 }

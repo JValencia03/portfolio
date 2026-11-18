@@ -1,9 +1,8 @@
 import { createScenePose } from "@/lib/scroll/choreography";
 import { createSnapshot } from "@/lib/scroll/timeline";
+import { CAMERA_FOV, CAMERA_REST_Z } from "@/lib/three/view";
 
-/** Distance of the camera from the stage plane (z = 0) while at rest. */
-export const CAMERA_REST_Z = 12;
-export const CAMERA_FOV = 35;
+export { CAMERA_FOV, CAMERA_REST_Z };
 
 /**
  * State of the current frame, shared by every part of the scene.
@@ -15,6 +14,12 @@ export const CAMERA_FOV = 35;
 export const sceneFrame = {
   /** Scroll position the scene is showing: `window.scrollY`, lightly smoothed. */
   scroll: 0,
+  /**
+   * Scroll distance covered in the laps already completed. The document
+   * loops, so `scroll` starts again from zero; whatever must keep moving in
+   * one direction across the seam (the drift of the background) adds this.
+   */
+  lapOffset: 0,
   /** Where that position falls in the shared timeline. */
   snapshot: createSnapshot(),
   /** What the scene should look like there. */

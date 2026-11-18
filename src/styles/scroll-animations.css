@@ -67,9 +67,14 @@
       view-timeline: --finale block;
     }
     [data-scene="on"] .finale-section .section-inner {
-      animation: emerge linear both;
-      animation-timeline: --finale;
-      animation-range: contain 20svh contain 80svh;
+      animation:
+        emerge linear backwards,
+        recede linear forwards;
+      animation-timeline: --finale, --finale;
+      /* Once its rest is over the section scrolls away, and the content goes ahead of it. */
+      animation-range:
+        contain 20svh contain 80svh,
+        exit 0% exit 60%;
     }
 
     /*
@@ -89,16 +94,42 @@
      * its slot for the center of the stage. --hero is a named view timeline on
      * the section; the children animate against it.
      */
-    #hero {
+    .hero:not([data-replica]) {
       view-timeline: --hero block;
     }
-    #hero .hero-identity,
-    #hero .hero-cta,
-    #hero .hero-stack,
-    #hero .hero-cube > p {
+    .hero:not([data-replica]) .hero-identity,
+    .hero:not([data-replica]) .hero-cta,
+    .hero:not([data-replica]) .hero-stack,
+    .hero:not([data-replica]) .hero-cube > p {
       animation: recede linear both;
       animation-timeline: --hero;
       animation-range: exit 0% exit 75%;
+    }
+
+    /*
+     * The copy of the hero that closes the loop: its content arrives as it
+     * rises into view and is fully at rest the moment it reaches the top —
+     * exactly how the real hero looks before any scroll.
+     */
+    .hero[data-replica] {
+      view-timeline: --hero-return block;
+    }
+    .hero[data-replica] .hero-identity,
+    .hero[data-replica] .hero-cta,
+    .hero[data-replica] .hero-stack,
+    .hero[data-replica] .hero-cube > p {
+      animation: arrive linear both;
+      animation-timeline: --hero-return;
+      animation-range: entry 30% entry 96%;
+    }
+    /*
+     * In one column the cube's slot is below the name, and the cube crosses the
+     * middle of the view on its way there: the name waits until it has passed.
+     */
+    @media (width < 64rem) {
+      .hero[data-replica] .hero-identity {
+        animation-range: entry 87% entry 100%;
+      }
     }
 
     /*
@@ -145,6 +176,31 @@
         contain 25svh contain 85svh,
         exit 0% exit 45%;
     }
+
+    /*
+     * The opening. The cube comes apart during this section's pin, and what
+     * it held comes forward out of the light: the heading first, then the
+     * three projects one after another (--i is the card's position), each
+     * igniting as it lands. On the same screen, in the same order, as the
+     * pieces leave (OPENING in lib/scroll/choreography.ts).
+     */
+    [data-scene="on"] .scene-section[data-entry="opening"] .section-inner {
+      animation-range:
+        contain 20svh contain 46svh,
+        exit 0% exit 45%;
+    }
+    [data-scene="on"] .scene-section[data-entry="opening"] .project-card {
+      animation: ignite linear both;
+      animation-timeline: --section;
+      animation-range: contain calc(32svh + var(--i, 0) * 11svh) contain calc(64svh + var(--i, 0) * 11svh);
+    }
+
+    /* Read inside the open cube: nothing to reveal in place, only the way out. */
+    [data-scene="on"] .scene-section[data-entry="inside"] .section-inner {
+      animation: recede linear forwards;
+      animation-timeline: --section;
+      animation-range: exit 0% exit 45%;
+    }
   }
 }
 
@@ -180,6 +236,30 @@
   from {
     opacity: 0;
     scale: 0.94;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 0 2rem;
+  }
+}
+
+/* Out of the light: over-bright and soft at first, then sharp, then at its own brightness. */
+@keyframes ignite {
+  from {
+    opacity: 0;
+    translate: 0 3rem;
+    scale: 0.9;
+    filter: blur(14px) brightness(2.8);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0) brightness(1.8);
+  }
+  to {
+    filter: none;
   }
 }
 

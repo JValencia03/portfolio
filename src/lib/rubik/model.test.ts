@@ -76,7 +76,10 @@ test("handedness matches a real cube: white up and green front put red on the ri
   assert.deepEqual(cross(FACE_NORMALS.white, FACE_NORMALS.green), FACE_NORMALS.red);
 });
 
-test("every cube face is the portal of exactly one section", () => {
-  const faces = SECTIONS.flatMap((section) => (section.face ? [section.face] : []));
-  assert.deepEqual([...faces].sort(), [...FACE_COLORS].sort());
+test("every cube face is the color of exactly one section: three portals and the three projects", () => {
+  const colors = SECTIONS.flatMap((section) => (section.color ? [section.color] : []));
+  assert.deepEqual([...colors].sort(), [...FACE_COLORS].sort());
+  const portals = SECTIONS.filter((section) => section.entry === "portal").map((section) => section.color);
+  const inside = SECTIONS.filter((section) => section.entry === "inside").map((section) => section.color);
+  assert.deepEqual([portals.length, inside.length], [3, 3]);
 });
