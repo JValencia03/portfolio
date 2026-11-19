@@ -14,9 +14,9 @@ export interface SkillCategory {
  * A new category id also needs a title in both dictionaries.
  */
 export const skillCategories: SkillCategory[] = [
-  { id: "frontend", items: [] },
-  { id: "backend", items: [] },
-  { id: "databases", items: [] },
-  { id: "systems", items: [] },
-  { id: "ai", items: [] },
+  { id: "frontend", items: ["HTML", "CSS", "TypeScript", "React", "Next.js", "Astro", "Tailwind", "Redux", "Zustand"] },
+  { id: "backend", items: ["Go", "Node.js", "Express", "Python", "FastAPI", "REST APIs", "Auth & roles", "Rust (learning)"] },
+  { id: "databases", items: ["PostgreSQL", "SQLite", "Prisma", "SQLAlchemy"] },
+  { id: "systems", items: ["Docker", "Linux", "WSL2", "Git", "GitHub", "Cloudflare", "Figma"] },
+  { id: "ai", items: ["AI coding agents", "Multi-agent workflows", "OpenCode", "Gentle AI", "Prompt & context engineering", "SDD / ODD", "llama.cpp", "Local RAG"] },
 ];
